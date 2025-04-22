@@ -40,13 +40,16 @@ jobs:
           uv pip install -e .[build]
 
       - name: Get version
+        id: current_version
         run: |
           echo "VERSION=$(cat VERSION)" >> $GITHUB_ENV
 
-      - name: Create tag
+      - name: Create and push tag
         run: |
-          git tag "v$VERSION"
-          git push origin "v$VERSION"
+          git tag "v${{ steps.current_version.outputs.version }}"
+          git push origin "v${{ steps.current_version.outputs.version }}"
+          # Wait for tag to be available
+          sleep 2
 
       - name: Build package
         run: |
@@ -62,6 +65,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: "v${{ steps.current_version.outputs.version }}"
           files: |
             dist/*.whl
             dist/*.tar.gz
