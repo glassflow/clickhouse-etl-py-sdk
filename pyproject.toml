@@ -35,6 +35,7 @@ test = [
 build = [
     "build>=1.0.0",
     "hatch>=1.0.0",
+    "twine>=4.0.0",
 ]
 
 [project.urls]
