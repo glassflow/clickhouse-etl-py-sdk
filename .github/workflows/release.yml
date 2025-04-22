@@ -42,7 +42,7 @@ jobs:
       - name: Get version
         id: current_version
         run: |
-          echo "VERSION=$(cat VERSION)" >> $GITHUB_ENV
+          echo "VERSION=$(cat VERSION)" >> $GITHUB_OUTPUT
 
       - name: Create and push tag
         run: |
