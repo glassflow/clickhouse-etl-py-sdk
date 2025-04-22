@@ -1,6 +1,7 @@
 # Clickhouse ETL Python SDK
 
 <!-- Pytest Coverage Comment:Begin -->
+![Coverage](https://img.shields.io/badge/coverage-94%25-brightgreen)
 <!-- Pytest Coverage Comment:End -->
 
 A Python SDK for creating and managing data pipelines between Kafka and ClickHouse.
