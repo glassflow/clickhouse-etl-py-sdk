@@ -30,13 +30,19 @@ class KafkaMechanism(CaseInsensitiveStrEnum):
 
 class SchemaFieldType(CaseInsensitiveStrEnum):
     STRING = "string"
+    INT = "int"
     INT8 = "int8"
     INT16 = "int16"
     INT32 = "int32"
     INT64 = "int64"
+    UINT = "uint"
+    UINT8 = "uint8"
+    UINT16 = "uint16"
+    UINT32 = "uint32"
+    UINT64 = "uint64"
     FLOAT32 = "float32"
     FLOAT64 = "float64"
-    BOOLEAN = "boolean"
+    BOOL = "bool"
 
 
 class SchemaField(BaseModel):
@@ -199,15 +205,43 @@ class JoinConfig(BaseModel):
 
 
 class ClickhouseDataType(CaseInsensitiveStrEnum):
-    STRING = "String"
     INT8 = "Int8"
     INT16 = "Int16"
     INT32 = "Int32"
     INT64 = "Int64"
-    FLOAT32 = "Float32"
-    FLOAT64 = "Float64"
-    BOOLEAN = "Boolean"
+    UINT8 = "UInt8"
+    UINT16 = "UInt16"
+    UINT32 = "UInt32"
+    UINT64 = "UInt64"
+    DECIMAL32 = "Decimal32"
+    DECIMAL64 = "Decimal64"
+    DECIMAL128 = "Decimal128"
+    DECIMAL256 = "Decimal256"
+    STRING = "String"
+    FIXEDSTRING = "FixedString"
+    DATE = "Date"
+    DATE32 = "Date32"
     DATETIME = "DateTime"
+    DATETIME64 = "DateTime64"
+    BOOL = "Bool"
+    ARRAY = "Array"
+    NULLABLE = "Nullable"
+    LOWCARDINALITY = "LowCardinality"
+    UUID = "UUID"
+    IPV4 = "IPv4"
+    IPV6 = "IPv6"
+    JSON = "JSON"
+    MAP = "Map"
+    TUPLE = "Tuple"
+    NESTED = "Nested"
+    AGGREGATEFUNCTION = "AggregateFunction"
+    SIMPLEAGGREGATEFUNCTION = "SimpleAggregateFunction"
+    ENUM8 = "Enum8"
+    ENUM16 = "Enum16"
+    POINT = "Point"
+    RING = "Ring"
+    POLYGON = "Polygon"
+    MULTIPOLYGON = "MultiPolygon"
 
 
 class TableMapping(BaseModel):
