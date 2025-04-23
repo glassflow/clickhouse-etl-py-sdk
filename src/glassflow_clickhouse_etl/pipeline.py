@@ -40,7 +40,11 @@ class Pipeline:
         try:
             response = self.client.post(
                 self.ENDPOINT,
-                json=self.config.model_dump(mode="json", by_alias=True),
+                json=self.config.model_dump(
+                    mode="json",
+                    by_alias=True,
+                    exclude_none=True,
+                ),
             )
             response.raise_for_status()
         except httpx.HTTPStatusError as e:
