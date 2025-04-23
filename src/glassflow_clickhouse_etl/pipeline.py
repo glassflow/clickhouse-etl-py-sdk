@@ -13,7 +13,7 @@ class Pipeline:
     Main class for managing Kafka to ClickHouse pipelines.
     """
 
-    ENDPOINT = "/pipeline"
+    ENDPOINT = "/api/v1/pipeline"
 
     def __init__(
         self,
