@@ -25,7 +25,8 @@ The source configuration defines how to connect to and consume from Kafka topics
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `type` | string | Yes | Must be "kafka". |
+| `type` | string | Yes | "kafka" is the only supported source |
+| `provider` | string | No | Kafka provider, e.g. "aiven" |
 | `topics` | array | Yes | List of Kafka topics to consume from. See [Topic Configuration](#topic-configuration). |
 | `connection_params` | object | Yes | Kafka connection parameters. See [Connection Parameters](#connection-parameters). |
 
