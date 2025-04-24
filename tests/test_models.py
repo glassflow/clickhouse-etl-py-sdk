@@ -1,6 +1,6 @@
 import pytest
 
-from glassflow_clickhouse_etl import models
+from glassflow_clickhouse_etl import errors, models
 
 
 def test_pipeline_config_creation(valid_pipeline_config):
@@ -255,20 +255,20 @@ def test_topic_config_deduplication_id_field_validation():
         schema=models.Schema(
             type=models.SchemaType.JSON,
             fields=[
-                models.SchemaField(name="id", type=models.SchemaFieldType.STRING),
-                models.SchemaField(name="name", type=models.SchemaFieldType.STRING),
+                models.SchemaField(name="id", type=models.KafkaDataType.STRING),
+                models.SchemaField(name="name", type=models.KafkaDataType.STRING),
             ],
         ),
         deduplication=models.DeduplicationConfig(
             enabled=True,
             id_field="id",
-            id_field_type=models.SchemaFieldType.STRING,
+            id_field_type=models.KafkaDataType.STRING,
             time_window="1h",
         ),
     )
     assert config.name == "test-topic"
     assert config.deduplication.id_field == "id"
-    assert config.deduplication.id_field_type == models.SchemaFieldType.STRING
+    assert config.deduplication.id_field_type == models.KafkaDataType.STRING
 
     # Test with non-existent ID field
     with pytest.raises(ValueError) as exc_info:
@@ -278,13 +278,13 @@ def test_topic_config_deduplication_id_field_validation():
             schema=models.Schema(
                 type=models.SchemaType.JSON,
                 fields=[
-                    models.SchemaField(name="name", type=models.SchemaFieldType.STRING),
+                    models.SchemaField(name="name", type=models.KafkaDataType.STRING),
                 ],
             ),
             deduplication=models.DeduplicationConfig(
                 enabled=True,
                 id_field="non-existent-field",
-                id_field_type=models.SchemaFieldType.STRING,
+                id_field_type=models.KafkaDataType.STRING,
                 time_window="1h",
             ),
         )
@@ -298,13 +298,13 @@ def test_topic_config_deduplication_id_field_validation():
             schema=models.Schema(
                 type=models.SchemaType.JSON,
                 fields=[
-                    models.SchemaField(name="id", type=models.SchemaFieldType.INT64),
+                    models.SchemaField(name="id", type=models.KafkaDataType.INT64),
                 ],
             ),
             deduplication=models.DeduplicationConfig(
                 enabled=True,
                 id_field="id",
-                id_field_type=models.SchemaFieldType.STRING,
+                id_field_type=models.KafkaDataType.STRING,
                 time_window="1h",
             ),
         )
@@ -317,14 +317,25 @@ def test_topic_config_deduplication_id_field_validation():
         schema=models.Schema(
             type=models.SchemaType.JSON,
             fields=[
-                models.SchemaField(name="name", type=models.SchemaFieldType.STRING),
+                models.SchemaField(name="name", type=models.KafkaDataType.STRING),
             ],
         ),
         deduplication=models.DeduplicationConfig(
             enabled=False,
             id_field="non-existent-field",
-            id_field_type=models.SchemaFieldType.STRING,
+            id_field_type=models.KafkaDataType.STRING,
             time_window="1h",
         ),
     )
     assert config.deduplication.enabled is False
+
+
+def test_validate_data_type_compatibility_invalid_mapping(valid_pipeline_config):
+    """Test data type compatibility validation with invalid type mappings."""
+    # Modify the sink configuration to have an invalid type mapping
+    valid_pipeline_config["sink"]["table_mapping"][0]["column_type"] = (
+        models.ClickhouseDataType.INT32
+    )
+
+    with pytest.raises(errors.InvalidDataTypeMappingError):
+        models.PipelineConfig(**valid_pipeline_config)
