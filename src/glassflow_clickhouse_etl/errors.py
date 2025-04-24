@@ -35,3 +35,9 @@ class InternalServerError(GlassflowError):
     """Exception raised when an internal server error occurs."""
 
     pass
+
+
+class InvalidDataTypeMappingError(GlassflowError):
+    """Exception raised when a data type mapping is invalid."""
+
+    pass
