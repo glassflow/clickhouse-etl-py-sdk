@@ -48,6 +48,23 @@ class DeduplicationConfig(BaseModel):
                 )
         return v
 
+    @field_validator("id_field_type")
+    @classmethod
+    def validate_id_field_type(
+        cls, v: KafkaDataType, info: ValidationInfo
+    ) -> KafkaDataType:
+        if info.data.get("enabled", False):
+            if v not in [
+                KafkaDataType.STRING,
+                KafkaDataType.INT32,
+                KafkaDataType.INT64,
+            ]:
+                raise ValueError(
+                    f"{info.field_name} must be a string, int32, or int64 when "
+                    "deduplication is enabled"
+                )
+        return v
+
 
 class ConsumerGroupOffset(CaseInsensitiveStrEnum):
     LATEST = "latest"
