@@ -24,6 +24,7 @@ dependencies = [
     "requests>=2.31.0",
     "python-dotenv>=1.0.0",
     "httpx>=0.26.0",
+    "mixpanel>=4.10.0",
 ]
 
 [project.optional-dependencies]

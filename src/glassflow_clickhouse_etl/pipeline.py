@@ -6,6 +6,7 @@ import httpx
 from pydantic import ValidationError
 
 from . import errors, models
+from .tracking import Tracking
 
 
 class Pipeline:
@@ -31,6 +32,7 @@ class Pipeline:
 
         self.config = config
         self.client = httpx.Client(base_url=url)
+        self.tracking = Tracking()
 
     def create(self) -> None:
         """Create a new pipeline with the given configuration."""
@@ -47,6 +49,8 @@ class Pipeline:
                 ),
             )
             response.raise_for_status()
+
+            self.tracking.track_event("PipelineDeployed", self._tracking_info())
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 403:
                 raise errors.PipelineAlreadyExistsError(
@@ -79,6 +83,8 @@ class Pipeline:
         try:
             response = self.client.delete(f"{self.ENDPOINT}/shutdown")
             response.raise_for_status()
+
+            self.tracking.track_event("PipelineDeleted", self._tracking_info())
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
                 raise errors.PipelineNotFoundError(
@@ -141,3 +147,30 @@ class Pipeline:
             raise errors.ConnectionError(
                 f"Failed to connect to pipeline service: {e}"
             ) from e
+
+    def disable_tracking(self) -> None:
+        """Disable tracking of pipeline events."""
+        self.tracking.enabled = False
+
+    def _tracking_info(self) -> dict[str, Any]:
+        """Get information about the active pipeline."""
+        if self.config is not None:
+            if self.config.join is not None:
+                join_enabled = self.config.join.enabled
+            else:
+                join_enabled = False
+
+            for topic in self.config.source.topics:
+                if topic.deduplication is not None:
+                    deduplication_enabled = topic.deduplication.enabled
+                    break
+            else:
+                deduplication_enabled = False
+
+            return {
+                "pipeline_id": self.config.pipeline_id,
+                "join_enabled": join_enabled,
+                "deduplication_enabled": deduplication_enabled,
+            }
+        else:
+            return {}
