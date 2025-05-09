@@ -1,8 +1,23 @@
 # Clickhouse ETL Python SDK
 
+<p align="left">
+  <a target="_blank" href="https://pypi.python.org/pypi/glassflow-clickhouse-etl">
+    <img src="https://img.shields.io/pypi/v/glassflow-clickhouse-etl.svg?labelColor=&color=e69e3a">
+  </a>
+  <a target="_blank" href="https://github.com/glassflow/clickhouse-etl-py-sdk/blob/main/LICENSE">
+    <img src="https://img.shields.io/pypi/l/glassflow-clickhouse-etl.svg?labelColor=&color=e69e3a">
+  </a>
+  <a target="_blank" href="https://pypi.python.org/pypi/glassflow-clickhouse-etl">
+    <img src="https://img.shields.io/pypi/pyversions/glassflow-clickhouse-etl.svg?labelColor=&color=e69e3a">
+  </a>
+  <br />
+  <a target="_blank" href="(https://github.com/glassflow/clickhouse-etl-py-sdk/actions">
+    <img src="https://github.com/glassflow/clickhouse-etl-py-sdk/workflows/Test/badge.svg?labelColor=&color=e69e3a">
+  </a>
 <!-- Pytest Coverage Comment:Begin -->
-![Coverage](https://img.shields.io/badge/coverage-95%25-brightgreen)
+  <img src="https://img.shields.io/badge/coverage-95%25-brightgreen">
 <!-- Pytest Coverage Comment:End -->
+</p>
 
 A Python SDK for creating and managing data pipelines between Kafka and ClickHouse.
 
