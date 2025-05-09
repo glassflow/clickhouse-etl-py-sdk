@@ -20,21 +20,19 @@ class Pipeline:
         self,
         config: models.PipelineConfig | dict[str, Any] | None = None,
         url: str = "http://localhost:8080",
-        mixpanel_token: str | None = "None",
     ):
         """Initialize the Pipeline class.
 
         Args:
             config: Pipeline configuration
             url: URL of the GlassFlow Clickhouse ETL service
-            mixpanel_token: Optional Mixpanel project token
         """
         if isinstance(config, dict):
             config = models.PipelineConfig.model_validate(config)
 
         self.config = config
         self.client = httpx.Client(base_url=url)
-        self.tracking = Tracking(mixpanel_token)
+        self.tracking = Tracking()
 
     def create(self) -> None:
         """Create a new pipeline with the given configuration."""
@@ -51,14 +49,8 @@ class Pipeline:
                 ),
             )
             response.raise_for_status()
-            
-            # Track pipeline deployment
-            self.tracking.track_event(
-                "PipelineDeployed",
-                {
-                    "pipeline_id": self.config.pipeline_id                    
-                }
-            )
+
+            self.tracking.track_event("PipelineDeployed", self._tracking_info())
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 403:
                 raise errors.PipelineAlreadyExistsError(
@@ -91,15 +83,8 @@ class Pipeline:
         try:
             response = self.client.delete(f"{self.ENDPOINT}/shutdown")
             response.raise_for_status()
-            
-            # Track pipeline deletion
-            if self.config:
-                self.tracking.track_event(
-                    "PipelineDeleted",
-                    {
-                        "pipeline_id": self.config.pipeline_id,
-                    }
-                )
+
+            self.tracking.track_event("PipelineDeleted", self._tracking_info())
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
                 raise errors.PipelineNotFoundError(
@@ -162,3 +147,31 @@ class Pipeline:
             raise errors.ConnectionError(
                 f"Failed to connect to pipeline service: {e}"
             ) from e
+
+
+    def disable_tracking(self) -> None:
+        """Disable tracking of pipeline events."""
+        self.tracking.enabled = False
+
+    def _tracking_info(self) -> dict[str, Any]:
+        """Get information about the active pipeline."""
+        if self.config is not None:
+            if self.config.join is not None:
+                join_enabled = self.config.join.enabled
+            else:
+                join_enabled = False
+
+            for topic in self.config.source.topics:
+                if topic.deduplication.enabled:
+                    deduplication_enabled = True
+                    break
+            else:
+                deduplication_enabled = False
+
+            return {
+                "pipeline_id": self.config.pipeline_id,
+                "join_enabled": join_enabled,
+                "deduplication_enabled": deduplication_enabled
+            }
+        else:
+            return {}

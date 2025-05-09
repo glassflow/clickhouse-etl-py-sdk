@@ -1,37 +1,48 @@
 from __future__ import annotations
 
 import os
+import platform
+from importlib.metadata import version
 from typing import Any, Dict
 
 import mixpanel
 
+
 class Tracking:
     """Mixpanel tracking implementation for GlassFlow Clickhouse ETL."""
-    
-    def __init__(self, project_token: str | None = None):
-        """Initialize the tracking client.
-        
-        Args:
-            project_token: Mixpanel project token. If not provided, will try to get from MIXPANEL_TOKEN env var.
-        """
-        self.project_token = project_token or os.getenv("MIXPANEL_TOKEN")
-        if not self.project_token:
-            raise ValueError("Mixpanel project token is required. Set MIXPANEL_TOKEN env var or provide project_token.")
-        
-        self.client = mixpanel.Mixpanel(self.project_token)
-    
-    def track_event(self, event_name: str, properties: Dict[str, Any] | None = None) -> None:
+
+    def __init__(self):
+        """Initialize the tracking client"""
+        self.enabled = os.getenv("GF_TRACKING_ENABLED", "true").lower() == "true"
+        self._project_token = "209670ec9b352915013a5dfdb169dd25"
+        self.client = mixpanel.Mixpanel(self._project_token)
+
+    def track_event(
+        self, event_name: str, properties: Dict[str, Any] | None = None
+    ) -> None:
         """Track an event in Mixpanel.
-        
+
         Args:
             event_name: Name of the event to track
             properties: Additional properties to include with the event
         """
+        if not self.enabled:
+            return
+
+        base_properties = {
+            "sdk_version": version("glassflow-clickhouse-etl"),
+            "platform": platform.system(),
+            "python_version": platform.python_version()
+        }
         if properties is None:
             properties = {}
-            
-        self.client.track(
-            distinct_id="glassflow-clickhouse-etl",
-            event_name=event_name,
-            properties=properties
-        ) 
+        properties = {**base_properties, **properties}
+
+        try:
+            self.client.track(
+                distinct_id="glassflow-clickhouse-etl",
+                event_name=event_name,
+                properties=properties,
+            )
+        except Exception:
+            pass
