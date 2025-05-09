@@ -4,9 +4,6 @@ on:
   pull_request:
     branches:
       - main
-  push:
-    branches:
-      - main
 
 jobs:
   lint:
@@ -102,7 +99,7 @@ jobs:
           unique-id-for-comment: "python-coverage"
 
       - name: Update README with coverage badge
-        if: github.event_name == 'push' && matrix.python-version == '3.11'
+        if: matrix.python-version == '3.11'
         run: |
           # Extract coverage percentage and color from the coverageComment step
           COVERAGE_PERCENTAGE=$(echo "${{ steps.coverageComment.outputs.coverage }}" | grep -o '[0-9]*%' | tr -d '%')
@@ -114,18 +111,18 @@ jobs:
           # Update README with the badge
           sed -i "/<!-- Pytest Coverage Comment:Begin -->/,/<!-- Pytest Coverage Comment:End -->/c\\
           <!-- Pytest Coverage Comment:Begin -->\\
-          ![Coverage](${BADGE_URL})\\
+            <img src="${BADGE_URL}">\\
           <!-- Pytest Coverage Comment:End -->" README.md
 
       - name: Clean up coverage file
-        if: github.event_name == 'push' && matrix.python-version == '3.11'
+        if: matrix.python-version == '3.11'
         run: |
           rm -f coverage.xml
 
       - name: Commit and push README changes
-        if: github.event_name == 'push' && matrix.python-version == '3.11'
+        if: matrix.python-version == '3.11'
         uses: actions-js/push@master
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: main
+          branch: ${{ github.head_ref }}
           message: "docs: update coverage badge"
