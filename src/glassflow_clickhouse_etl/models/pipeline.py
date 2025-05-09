@@ -12,7 +12,7 @@ from .source import SourceConfig
 class PipelineConfig(BaseModel):
     pipeline_id: str
     source: SourceConfig
-    join: Optional[JoinConfig] = Field(default=None)
+    join: Optional[JoinConfig] = Field(default=JoinConfig())
     sink: SinkConfig
 
     @field_validator("pipeline_id")

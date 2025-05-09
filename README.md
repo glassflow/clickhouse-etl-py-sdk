@@ -93,6 +93,28 @@ pipeline.create()
 
 For detailed information about the pipeline configuration, see [CONFIGURATION](CONFIGURATION.md).
 
+## Tracking
+
+The SDK includes anonymous usage tracking to help improve the product. Tracking is enabled by default but can be disabled in two ways:
+
+1. Using an environment variable:
+```bash
+export GF_TRACKING_ENABLED=false
+```
+
+2. Programmatically using the `disable_tracking` method:
+```python
+pipeline = Pipeline(pipeline_config)
+pipeline.disable_tracking()
+```
+
+The tracking collects anonymous information about:
+- SDK version
+- Platform (operating system)
+- Python version
+- Pipeline ID
+- Whether joins or deduplication are enabled
+
 ## Development
 
 ### Setup
