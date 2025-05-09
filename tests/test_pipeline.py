@@ -10,7 +10,6 @@ from glassflow_clickhouse_etl.pipeline import Pipeline
 
 def test_create_pipeline_success(valid_pipeline_config, mock_success_response):
     """Test successful pipeline creation."""
-    # Convert dictionary to Pydantic model
     config = PipelineConfig(**valid_pipeline_config)
     pipeline = Pipeline(config=config)
 
@@ -34,7 +33,6 @@ def test_create_pipeline_already_active(valid_pipeline_config, mock_forbidden_re
 
 def test_create_pipeline_invalid_config(invalid_pipeline_config):
     """Test pipeline creation with invalid configuration."""
-    # The validation should fail during Pipeline initialization
     with pytest.raises((ValueError, ValidationError)) as exc_info:
         Pipeline(config=invalid_pipeline_config)
     assert "pipeline_id cannot be empty" in str(exc_info.value)
@@ -108,17 +106,13 @@ def test_delete_pipeline_connection_error(valid_pipeline_config, mock_connection
 
 def test_validate_config_valid(valid_pipeline_config):
     """Test validation of a valid pipeline configuration."""
-    # Convert dictionary to Pydantic model
     config = PipelineConfig(**valid_pipeline_config)
-
-    # Validate the configuration
     Pipeline.validate_config(config)
     # No exception should be raised
 
 
 def test_validate_config_invalid(invalid_pipeline_config):
     """Test validation of an invalid pipeline configuration."""
-    # Attempt to convert dictionary to Pydantic model
     with pytest.raises((ValueError, ValidationError)) as exc_info:
         Pipeline.validate_config(invalid_pipeline_config)
     assert "pipeline_id cannot be empty" in str(exc_info.value)
@@ -161,3 +155,40 @@ def test_get_running_pipeline_connection_error(mock_connection_error):
         with pytest.raises(errors.ConnectionError):
             pipeline.get_running_pipeline()
             mock_get.assert_called_once_with(pipeline.ENDPOINT)
+
+
+def test_tracking_info(
+    valid_pipeline_config,
+    valid_pipeline_config_with_dedup_disabled,
+    valid_pipeline_config_without_joins,
+    valid_pipeline_config_without_joins_and_dedup_disabled,
+):
+    """Test tracking info."""
+    pipeline = Pipeline(config=valid_pipeline_config)
+    assert pipeline._tracking_info() == {
+        "pipeline_id": valid_pipeline_config["pipeline_id"],
+        "join_enabled": True,
+        "deduplication_enabled": True,
+    }
+
+    pipeline = Pipeline(config=valid_pipeline_config_with_dedup_disabled)
+    assert pipeline._tracking_info() == {
+        "pipeline_id": valid_pipeline_config_with_dedup_disabled["pipeline_id"],
+        "join_enabled": True,
+        "deduplication_enabled": False,
+    }
+
+    pipeline = Pipeline(config=valid_pipeline_config_without_joins)
+    assert pipeline._tracking_info() == {
+        "pipeline_id": valid_pipeline_config_without_joins["pipeline_id"],
+        "join_enabled": False,
+        "deduplication_enabled": True,
+    }
+
+    pipeline = Pipeline(config=valid_pipeline_config_without_joins_and_dedup_disabled)
+    pipeline_id = valid_pipeline_config_without_joins_and_dedup_disabled["pipeline_id"]
+    assert pipeline._tracking_info() == {
+        "pipeline_id": pipeline_id,
+        "join_enabled": False,
+        "deduplication_enabled": False,
+    }

@@ -1,7 +1,15 @@
-from unittest.mock import MagicMock
+import copy
+from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
+
+
+@pytest.fixture
+def mock_track(autouse=True):
+    """Mock the Mixpanel track method."""
+    with patch("glassflow_clickhouse_etl.tracking.mixpanel.Mixpanel.track") as mock:
+        yield mock
 
 
 @pytest.fixture
@@ -143,6 +151,110 @@ def valid_pipeline_config() -> dict:
             ],
         },
     }
+
+
+@pytest.fixture
+def valid_pipeline_config_without_joins() -> dict:
+    """Fixture for a valid pipeline configuration without joins."""
+    return {
+        "pipeline_id": "test-pipeline",
+        "source": {
+            "type": "kafka",
+            "provider": "aiven",
+            "connection_params": {
+                "brokers": [
+                    "kafka-broker-0:9092",
+                    "kafka-broker-1:9092",
+                ],
+                "protocol": "SASL_SSL",
+                "mechanism": "SCRAM-SHA-256",
+                "username": "<user>",
+                "password": "<password>",
+                "root_ca": "<base64 encoded ca>",
+            },
+            "topics": [
+                {
+                    "consumer_group_initial_offset": "earliest",
+                    "name": "user_logins",
+                    "schema": {
+                        "type": "json",
+                        "fields": [
+                            {
+                                "name": "session_id",
+                                "type": "string",
+                            },
+                            {
+                                "name": "user_id",
+                                "type": "string",
+                            },
+                            {
+                                "name": "timestamp",
+                                "type": "String",
+                            },
+                        ],
+                    },
+                    "deduplication": {
+                        "enabled": True,
+                        "id_field": "session_id",
+                        "id_field_type": "string",
+                        "time_window": "12h",
+                    },
+                },
+            ],
+        },
+        "sink": {
+            "type": "clickhouse",
+            "provider": "aiven",
+            "host": "<host>",
+            "port": "12753",
+            "database": "default",
+            "username": "<user>",
+            "password": "<password>",
+            "secure": True,
+            "max_batch_size": 1,
+            "table": "user_orders",
+            "table_mapping": [
+                {
+                    "source_id": "user_logins",
+                    "field_name": "session_id",
+                    "column_name": "session_id",
+                    "column_type": "string",
+                },
+                {
+                    "source_id": "user_logins",
+                    "field_name": "user_id",
+                    "column_name": "user_id",
+                    "column_type": "STRING",
+                },
+                {
+                    "source_id": "user_logins",
+                    "field_name": "timestamp",
+                    "column_name": "login_at",
+                    "column_type": "DateTime",
+                },
+            ],
+        },
+    }
+
+
+@pytest.fixture
+def valid_pipeline_config_with_dedup_disabled(valid_pipeline_config) -> dict:
+    """Fixture for a valid pipeline configuration with deduplication disabled."""
+    config = copy.deepcopy(valid_pipeline_config)
+    for idx, _ in enumerate(config["source"]["topics"]):
+        config["source"]["topics"][idx]["deduplication"] = None
+    return config
+
+
+@pytest.fixture
+def valid_pipeline_config_without_joins_and_dedup_disabled(
+    valid_pipeline_config_without_joins,
+) -> dict:
+    """Fixture for a valid pipeline configuration without joins and deduplication."""
+    config = copy.deepcopy(valid_pipeline_config_without_joins)
+    for idx, _ in enumerate(config["source"]["topics"]):
+        config["source"]["topics"][idx]["deduplication"] = None
+    return config
 
 
 @pytest.fixture

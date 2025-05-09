@@ -33,7 +33,7 @@ class Schema(BaseModel):
 
 
 class DeduplicationConfig(BaseModel):
-    enabled: bool
+    enabled: bool = False
     id_field: Optional[str] = Field(default=None)
     id_field_type: Optional[KafkaDataType] = Field(default=None)
     time_window: Optional[str] = Field(default=None)
@@ -75,7 +75,7 @@ class TopicConfig(BaseModel):
     consumer_group_initial_offset: ConsumerGroupOffset = ConsumerGroupOffset.EARLIEST
     name: str
     event_schema: Schema = Field(alias="schema")
-    deduplication: DeduplicationConfig
+    deduplication: Optional[DeduplicationConfig] = Field(default=DeduplicationConfig())
 
     @field_validator("deduplication")
     @classmethod
@@ -86,7 +86,7 @@ class TopicConfig(BaseModel):
         Validate that the deduplication ID field exists in the
         schema and has matching type.
         """
-        if not v.enabled:
+        if v is None or not v.enabled:
             return v
 
         # Get the schema from the parent model's data

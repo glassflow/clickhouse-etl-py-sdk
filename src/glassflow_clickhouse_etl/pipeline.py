@@ -148,7 +148,6 @@ class Pipeline:
                 f"Failed to connect to pipeline service: {e}"
             ) from e
 
-
     def disable_tracking(self) -> None:
         """Disable tracking of pipeline events."""
         self.tracking.enabled = False
@@ -162,8 +161,8 @@ class Pipeline:
                 join_enabled = False
 
             for topic in self.config.source.topics:
-                if topic.deduplication.enabled:
-                    deduplication_enabled = True
+                if topic.deduplication is not None:
+                    deduplication_enabled = topic.deduplication.enabled
                     break
             else:
                 deduplication_enabled = False
@@ -171,7 +170,7 @@ class Pipeline:
             return {
                 "pipeline_id": self.config.pipeline_id,
                 "join_enabled": join_enabled,
-                "deduplication_enabled": deduplication_enabled
+                "deduplication_enabled": deduplication_enabled,
             }
         else:
             return {}
