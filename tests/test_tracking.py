@@ -22,7 +22,7 @@ def test_tracking_enabled(mock_track):
 
         tracking.track_event("test_event", {"test": "data"})
         mock_track.assert_called_once_with(
-            distinct_id="glassflow-clickhouse-etl",
+            distinct_id=tracking._distinct_id,
             event_name="test_event",
             properties={
                 "sdk_version": tracking.sdk_version,
@@ -44,7 +44,7 @@ def test_tracking_enabled_no_properties(mock_track):
 
         tracking.track_event("test_event")
         mock_track.assert_called_once_with(
-            distinct_id="glassflow-clickhouse-etl",
+            distinct_id=tracking._distinct_id,
             event_name="test_event",
             properties={
                 "sdk_version": tracking.sdk_version,

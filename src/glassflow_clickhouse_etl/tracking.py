@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import platform
+import uuid
 from importlib.metadata import version
 from typing import Any, Dict
 
@@ -15,6 +16,7 @@ class Tracking:
         """Initialize the tracking client"""
         self.enabled = os.getenv("GF_TRACKING_ENABLED", "true").lower() == "true"
         self._project_token = "209670ec9b352915013a5dfdb169dd25"
+        self._distinct_id = str(uuid.uuid4())
         self.client = mixpanel.Mixpanel(self._project_token)
 
         self.sdk_version = version("glassflow-clickhouse-etl")
@@ -44,7 +46,7 @@ class Tracking:
 
         try:
             self.client.track(
-                distinct_id="glassflow-clickhouse-etl",
+                distinct_id=self._distinct_id,
                 event_name=event_name,
                 properties=properties,
             )
