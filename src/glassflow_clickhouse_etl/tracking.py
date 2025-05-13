@@ -8,6 +8,8 @@ from typing import Any, Dict
 
 import mixpanel
 
+DISTINCT_ID = str(uuid.uuid4())
+
 
 class Tracking:
     """Mixpanel tracking implementation for GlassFlow Clickhouse ETL."""
@@ -16,7 +18,7 @@ class Tracking:
         """Initialize the tracking client"""
         self.enabled = os.getenv("GF_TRACKING_ENABLED", "true").lower() == "true"
         self._project_token = "209670ec9b352915013a5dfdb169dd25"
-        self._distinct_id = str(uuid.uuid4())
+        self._distinct_id = DISTINCT_ID
         self.client = mixpanel.Mixpanel(self._project_token)
 
         self.sdk_version = version("glassflow-clickhouse-etl")

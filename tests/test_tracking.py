@@ -63,3 +63,11 @@ def test_tracking_error_handling(mock_track):
         mock_track.side_effect = Exception("Test error")
         # Should not raise an exception
         tracking.track_event("test_event", {"test": "data"})
+
+
+def test_tracking_objects_share_distinct_id():
+    """Test that the tracking instance is shared across modules."""
+    with patch.dict(os.environ, {"GF_TRACKING_ENABLED": "true"}):
+        tracking1 = Tracking()
+        tracking2 = Tracking()
+        assert tracking1._distinct_id == tracking2._distinct_id
