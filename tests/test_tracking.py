@@ -22,7 +22,7 @@ def test_tracking_enabled(mock_track):
 
         tracking.track_event("test_event", {"test": "data"})
         mock_track.assert_called_once_with(
-            distinct_id="glassflow-clickhouse-etl",
+            distinct_id=tracking._distinct_id,
             event_name="test_event",
             properties={
                 "sdk_version": tracking.sdk_version,
@@ -44,7 +44,7 @@ def test_tracking_enabled_no_properties(mock_track):
 
         tracking.track_event("test_event")
         mock_track.assert_called_once_with(
-            distinct_id="glassflow-clickhouse-etl",
+            distinct_id=tracking._distinct_id,
             event_name="test_event",
             properties={
                 "sdk_version": tracking.sdk_version,
@@ -63,3 +63,11 @@ def test_tracking_error_handling(mock_track):
         mock_track.side_effect = Exception("Test error")
         # Should not raise an exception
         tracking.track_event("test_event", {"test": "data"})
+
+
+def test_tracking_objects_share_distinct_id():
+    """Test that the tracking instance is shared across modules."""
+    with patch.dict(os.environ, {"GF_TRACKING_ENABLED": "true"}):
+        tracking1 = Tracking()
+        tracking2 = Tracking()
+        assert tracking1._distinct_id == tracking2._distinct_id
