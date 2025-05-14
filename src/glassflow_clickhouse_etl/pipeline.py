@@ -15,6 +15,7 @@ class Pipeline:
     """
 
     ENDPOINT = "/api/v1/pipeline"
+    _tracking = Tracking()
 
     def __init__(
         self,
@@ -32,7 +33,6 @@ class Pipeline:
 
         self.config = config
         self.client = httpx.Client(base_url=url)
-        self.tracking = Tracking()
 
     def create(self) -> None:
         """Create a new pipeline with the given configuration."""
@@ -50,7 +50,7 @@ class Pipeline:
             )
             response.raise_for_status()
 
-            self.tracking.track_event("PipelineDeployed", self._tracking_info())
+            self._tracking.track_event("PipelineDeployed", self._tracking_info())
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 403:
                 raise errors.PipelineAlreadyExistsError(
@@ -84,7 +84,7 @@ class Pipeline:
             response = self.client.delete(f"{self.ENDPOINT}/shutdown")
             response.raise_for_status()
 
-            self.tracking.track_event("PipelineDeleted", self._tracking_info())
+            self._tracking.track_event("PipelineDeleted", self._tracking_info())
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
                 raise errors.PipelineNotFoundError(
@@ -150,7 +150,7 @@ class Pipeline:
 
     def disable_tracking(self) -> None:
         """Disable tracking of pipeline events."""
-        self.tracking.enabled = False
+        self._tracking.enabled = False
 
     def _tracking_info(self) -> dict[str, Any]:
         """Get information about the active pipeline."""
