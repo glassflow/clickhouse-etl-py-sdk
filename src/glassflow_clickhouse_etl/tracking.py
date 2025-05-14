@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import configparser
 import os
 import platform
 import uuid
@@ -8,8 +9,43 @@ from typing import Any, Dict
 
 import mixpanel
 
-DISTINCT_ID = str(uuid.uuid4())
+def _get_distinct_id() -> str:
+    """Get or create a distinct ID for tracking.
+    
+    Returns:
+        str: The distinct ID for tracking
+    """
+    home_dir = os.path.expanduser("~")
+    config_dir = os.path.join(home_dir, ".glassflow")
+    config_file = os.path.join(config_dir, "clickhouse.conf")
+    
+    # Create directory if it doesn't exist
+    if not os.path.exists(config_dir):
+        os.makedirs(config_dir)
+    
+    config = configparser.ConfigParser()
+    
+    # Read existing config if it exists
+    if os.path.exists(config_file):
+        config.read(config_file)
+        if "analytics" in config and "distinct_id" in config["analytics"]:
+            return config["analytics"]["distinct_id"]
+    
+    # Generate new ID and save it
+    distinct_id = str(uuid.uuid4())
+    
+    # Create or update config
+    if "analytics" not in config:
+        config["analytics"] = {}
+    config["analytics"]["distinct_id"] = distinct_id
+    
+    # Write config to file
+    with open(config_file, "w") as f:
+        config.write(f)
+    
+    return distinct_id
 
+DISTINCT_ID = _get_distinct_id()
 
 class Tracking:
     """Mixpanel tracking implementation for GlassFlow Clickhouse ETL."""
