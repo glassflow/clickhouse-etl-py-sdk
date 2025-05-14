@@ -104,9 +104,9 @@ pipeline = Pipeline(pipeline_config)
 pipeline.create()
 ```
 
-## Configuration
+## Pipeline Configuration
 
-For detailed information about the pipeline configuration, see [CONFIGURATION](CONFIGURATION.md).
+For detailed information about the pipeline configuration, see [GlassFlow docs](https://docs.glassflow.dev/pipeline_configuration).
 
 ## Tracking
 
