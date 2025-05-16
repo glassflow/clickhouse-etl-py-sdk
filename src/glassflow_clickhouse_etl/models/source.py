@@ -117,9 +117,9 @@ class TopicConfig(BaseModel):
 class KafkaConnectionParams(BaseModel):
     brokers: List[str]
     protocol: KafkaProtocol
-    mechanism: KafkaMechanism
-    username: str
-    password: str
+    mechanism: Optional[KafkaMechanism] = Field(default=None)
+    username: Optional[str] = Field(default=None)
+    password: Optional[str] = Field(default=None)
     root_ca: Optional[str] = Field(default=None)
 
 
