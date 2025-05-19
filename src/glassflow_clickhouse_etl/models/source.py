@@ -121,6 +121,7 @@ class KafkaConnectionParams(BaseModel):
     username: Optional[str] = Field(default=None)
     password: Optional[str] = Field(default=None)
     root_ca: Optional[str] = Field(default=None)
+    skip_auth: bool = Field(default=False)
 
 
 class SourceType(CaseInsensitiveStrEnum):
