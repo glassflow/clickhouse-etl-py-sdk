@@ -15,7 +15,7 @@
     <img src="https://github.com/glassflow/clickhouse-etl-py-sdk/workflows/Test/badge.svg?labelColor=&color=e69e3a">
   </a>
 <!-- Pytest Coverage Comment:Begin -->
-  <img src=https://img.shields.io/badge/coverage-93%25-brightgreen>
+  <img src=https://img.shields.io/badge/coverage-94%25-brightgreen>
 <!-- Pytest Coverage Comment:End -->
 </p>
 
@@ -129,6 +129,8 @@ The tracking collects anonymous information about:
 - Python version
 - Pipeline ID
 - Whether joins or deduplication are enabled
+- Kafka security protocol, auth mechanism used and whether authentication is disabled
+- Errors during pipeline creation and deletion
 
 ## Development
 

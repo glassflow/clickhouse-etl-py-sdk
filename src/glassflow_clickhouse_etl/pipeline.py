@@ -50,24 +50,35 @@ class Pipeline:
             )
             response.raise_for_status()
 
-            self._tracking.track_event("PipelineDeployed", self._tracking_info())
+            self._track_event("PipelineDeployed")
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 403:
+                self._track_event(
+                    "PipelineCreateError", error_type="PipelineAlreadyExists"
+                )
                 raise errors.PipelineAlreadyExistsError(
                     f"Pipeline with id {self.config.pipeline_id} already active; "
                     "shutdown to start another"
                 ) from e
             elif e.response.status_code == 422:
+                self._track_event(
+                    "PipelineCreateError", error_type="InvalidPipelineConfig"
+                )
                 raise errors.InvalidPipelineConfigError(
                     f"Invalid pipeline configuration: {e.response.text}"
                 ) from e
             elif e.response.status_code == 400:
+                self._track_event("PipelineCreateError", error_type="BadRequest")
                 raise ValueError(f"Bad request: {e.response.text}") from e
             else:
+                self._track_event(
+                    "PipelineCreateError", error_type="InternalServerError"
+                )
                 raise errors.InternalServerError(
                     f"Failed to create pipeline: {e.response.text}"
                 ) from e
         except httpx.RequestError as e:
+            self._track_event("PipelineCreateError", error_type="ConnectionError")
             raise errors.ConnectionError(
                 f"Failed to connect to pipeline service: {e}"
             ) from e
@@ -84,17 +95,22 @@ class Pipeline:
             response = self.client.delete(f"{self.ENDPOINT}/shutdown")
             response.raise_for_status()
 
-            self._tracking.track_event("PipelineDeleted", self._tracking_info())
+            self._track_event("PipelineDeleted")
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
+                self._track_event("PipelineDeleteError", error_type="PipelineNotFound")
                 raise errors.PipelineNotFoundError(
                     "No active pipeline to shutdown"
                 ) from e
             else:
+                self._track_event(
+                    "PipelineDeleteError", error_type="InternalServerError"
+                )
                 raise errors.InternalServerError(
                     f"Failed to shutdown pipeline: {e.response.text}"
                 ) from e
         except httpx.RequestError as e:
+            self._track_event("PipelineDeleteError", error_type="ConnectionError")
             raise errors.ConnectionError(
                 f"Failed to connect to pipeline service: {e}"
             ) from e
@@ -139,11 +155,15 @@ class Pipeline:
             return response.json().get("id")
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
+                self._track_event("PipelineGetError", error_type="PipelineNotFound")
                 raise errors.PipelineNotFoundError("No running pipeline found") from e
-            raise errors.InternalServerError(
-                f"Failed to get running pipeline: {e.response.text}"
-            ) from e
+            else:
+                self._track_event("PipelineGetError", error_type="InternalServerError")
+                raise errors.InternalServerError(
+                    f"Failed to get running pipeline: {e.response.text}"
+                ) from e
         except httpx.RequestError as e:
+            self._track_event("PipelineGetError", error_type="ConnectionError")
             raise errors.ConnectionError(
                 f"Failed to connect to pipeline service: {e}"
             ) from e
@@ -167,10 +187,31 @@ class Pipeline:
             else:
                 deduplication_enabled = False
 
+            if self.config.source.connection_params.root_ca is not None:
+                root_ca_provided = True
+            else:
+                root_ca_provided = False
+
+            if self.config.source.connection_params.skip_auth is not None:
+                skip_auth = self.config.source.connection_params.skip_auth
+            else:
+                skip_auth = False
+            protocol = self.config.source.connection_params.protocol
+            mechanism = self.config.source.connection_params.mechanism
+
             return {
                 "pipeline_id": self.config.pipeline_id,
                 "join_enabled": join_enabled,
                 "deduplication_enabled": deduplication_enabled,
+                "source_auth_method": mechanism,
+                "source_security_protocol": protocol,
+                "source_root_ca_provided": root_ca_provided,
+                "source_skip_auth": skip_auth,
             }
         else:
             return {}
+
+    def _track_event(self, event_name: str, **kwargs: Any) -> None:
+        pipeline_properties = self._tracking_info()
+        properties = {**pipeline_properties, **kwargs}
+        self._tracking.track_event(event_name, properties)

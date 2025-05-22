@@ -169,6 +169,10 @@ def test_tracking_info(
         "pipeline_id": valid_pipeline_config["pipeline_id"],
         "join_enabled": True,
         "deduplication_enabled": True,
+        "source_auth_method": "SCRAM-SHA-256",
+        "source_security_protocol": "SASL_SSL",
+        "source_root_ca_provided": True,
+        "source_skip_auth": False,
     }
 
     pipeline = Pipeline(config=valid_pipeline_config_with_dedup_disabled)
@@ -176,6 +180,10 @@ def test_tracking_info(
         "pipeline_id": valid_pipeline_config_with_dedup_disabled["pipeline_id"],
         "join_enabled": True,
         "deduplication_enabled": False,
+        "source_auth_method": "SCRAM-SHA-256",
+        "source_security_protocol": "SASL_SSL",
+        "source_root_ca_provided": True,
+        "source_skip_auth": False,
     }
 
     pipeline = Pipeline(config=valid_pipeline_config_without_joins)
@@ -183,6 +191,10 @@ def test_tracking_info(
         "pipeline_id": valid_pipeline_config_without_joins["pipeline_id"],
         "join_enabled": False,
         "deduplication_enabled": True,
+        "source_auth_method": "SCRAM-SHA-256",
+        "source_security_protocol": "SASL_SSL",
+        "source_root_ca_provided": True,
+        "source_skip_auth": False,
     }
 
     pipeline = Pipeline(config=valid_pipeline_config_without_joins_and_dedup_disabled)
@@ -191,4 +203,8 @@ def test_tracking_info(
         "pipeline_id": pipeline_id,
         "join_enabled": False,
         "deduplication_enabled": False,
+        "source_auth_method": "SCRAM-SHA-256",
+        "source_security_protocol": "SASL_SSL",
+        "source_root_ca_provided": True,
+        "source_skip_auth": False,
     }

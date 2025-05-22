@@ -1,7 +1,8 @@
 import os
-from unittest.mock import patch
+import uuid
+from unittest.mock import mock_open, patch
 
-from glassflow_clickhouse_etl.tracking import Tracking
+from glassflow_clickhouse_etl.tracking import Tracking, _get_distinct_id
 
 
 def test_tracking_disabled(mock_track):
@@ -65,9 +66,32 @@ def test_tracking_error_handling(mock_track):
         tracking.track_event("test_event", {"test": "data"})
 
 
-def test_tracking_objects_share_distinct_id():
-    """Test that the tracking instance is shared across modules."""
-    with patch.dict(os.environ, {"GF_TRACKING_ENABLED": "true"}):
-        tracking1 = Tracking()
-        tracking2 = Tracking()
-        assert tracking1._distinct_id == tracking2._distinct_id
+def test_get_distinct_id():
+    """Test the _get_distinct_id function."""
+    # Test case 1: New config file creation
+    with (
+        patch("os.path.exists") as mock_exists,
+        patch("os.makedirs") as mock_makedirs,
+        patch("builtins.open", mock_open()) as mock_file,
+    ):
+        mock_exists.return_value = False
+        distinct_id = _get_distinct_id()
+
+        mock_makedirs.assert_called_once()
+        mock_file.assert_called_once()
+        assert uuid.UUID(distinct_id)
+
+    # Test case 2: Existing config file with ID
+    with (
+        patch("os.path.exists") as mock_exists,
+        patch("configparser.ConfigParser") as mock_config_parser,
+        patch("builtins.open", mock_open()) as mock_file,
+    ):
+        mock_exists.return_value = True
+        mock_config = mock_config_parser.return_value
+        mock_config.__contains__.return_value = True
+        mock_config.__getitem__.return_value = {"distinct_id": "test-uuid"}
+        distinct_id = _get_distinct_id()
+
+        # Verify the existing ID was returned
+        assert distinct_id == "test-uuid"
