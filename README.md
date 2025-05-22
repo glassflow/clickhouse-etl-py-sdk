@@ -129,6 +129,7 @@ The tracking collects anonymous information about:
 - Python version
 - Pipeline ID
 - Whether joins or deduplication are enabled
+- Errors during pipeline creation and deletion
 
 ## Development
 
