@@ -7,6 +7,7 @@ from .data_types import KafkaDataType
 
 
 class KafkaProtocol(CaseInsensitiveStrEnum):
+    SSL = "SSL"
     SASL_SSL = "SASL_SSL"
     SASL_PLAINTEXT = "SASL_PLAINTEXT"
     PLAINTEXT = "PLAINTEXT"
