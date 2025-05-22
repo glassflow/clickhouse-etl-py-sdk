@@ -106,7 +106,7 @@ pipeline.create()
 
 ## Pipeline Configuration
 
-For detailed information about the pipeline configuration, see [GlassFlow docs](https://docs.glassflow.dev/pipeline_configuration).
+For detailed information about the pipeline configuration, see [GlassFlow docs](https://docs.glassflow.dev/pipeline/pipeline-configuration).
 
 ## Tracking
 
@@ -129,6 +129,7 @@ The tracking collects anonymous information about:
 - Python version
 - Pipeline ID
 - Whether joins or deduplication are enabled
+- Errors during pipeline creation and deletion
 
 ## Development
 
