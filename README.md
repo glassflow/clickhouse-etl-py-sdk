@@ -106,7 +106,7 @@ pipeline.create()
 
 ## Pipeline Configuration
 
-For detailed information about the pipeline configuration, see [GlassFlow docs](https://docs.glassflow.dev/pipeline_configuration).
+For detailed information about the pipeline configuration, see [GlassFlow docs](https://docs.glassflow.dev/pipeline/pipeline-configuration).
 
 ## Tracking
 
