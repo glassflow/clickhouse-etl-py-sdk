@@ -1,49 +1,74 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 import httpx
 from pydantic import ValidationError
 
 from . import errors, models
-from .tracking import Tracking
+from .client import Client
+
+if TYPE_CHECKING:
+    from .pipeline_manager import PipelineManager
 
 
-class Pipeline:
+class Pipeline(Client):
     """
     Main class for managing Kafka to ClickHouse pipelines.
     """
 
     ENDPOINT = "/api/v1/pipeline"
-    _tracking = Tracking()
 
     def __init__(
         self,
-        config: models.PipelineConfig | dict[str, Any] | None = None,
+        config: models.PipelineConfig | dict[str, Any] | str | None = None,
         url: str = "http://localhost:8080",
         pipeline_id: str | None = None,
+        manager: PipelineManager | None = None,
     ):
         """Initialize the Pipeline class.
 
         Args:
-            config: Pipeline configuration
+            config: Pipeline configuration or pipeline_id string (for backwards compatibility)
             url: URL of the GlassFlow Clickhouse ETL service
-            pipeline_id: Explicit pipeline ID for this instance
+            pipeline_id: Explicit pipeline ID (when config is not a string)
+            manager: Optional PipelineManager instance for delegating operations
         """
-        if isinstance(config, dict):
-            config = models.PipelineConfig.model_validate(config)
+        super().__init__(url)
+        
+        # Handle backwards compatibility
+        if isinstance(config, str):
+            # New style: Pipeline("pipeline-id", ...)
+            self.pipeline_id = config
+            self.config = None
+        elif config is not None:
+            # Old style: Pipeline(config=config, ...)
+            if isinstance(config, dict):
+                config = models.PipelineConfig.model_validate(config)
+            self.config = config
+            self.pipeline_id = pipeline_id or config.pipeline_id
+        else:
+            # Legacy style: Pipeline(pipeline_id="...", ...)
+            if pipeline_id is None:
+                raise ValueError("pipeline_id is required when config is not provided")
+            self.pipeline_id = pipeline_id
+            self.config = None
 
-        self.config = config
-        self.pipeline_id = pipeline_id or (config.pipeline_id if config else None)
-        self.client = httpx.Client(base_url=url)
+        self.manager = manager
 
     def create(self) -> None:
         """Create a new pipeline with the given configuration."""
         if self.config is None:
             raise ValueError("Pipeline configuration is required")
 
+        # Delegate to manager if available
+        if self.manager:
+            self.manager.create(self.config)
+            return
+
         try:
-            response = self.client.post(
+            self._request(
+                "POST",
                 self.ENDPOINT,
                 json=self.config.model_dump(
                     mode="json",
@@ -51,7 +76,6 @@ class Pipeline:
                     exclude_none=True,
                 ),
             )
-            response.raise_for_status()
 
             self._track_event("PipelineDeployed")
         except httpx.HTTPStatusError as e:
@@ -80,11 +104,6 @@ class Pipeline:
                 raise errors.InternalServerError(
                     f"Failed to create pipeline: {e.response.text}"
                 ) from e
-        except httpx.RequestError as e:
-            self._track_event("PipelineCreateError", error_type="ConnectionError")
-            raise errors.ConnectionError(
-                f"Failed to connect to pipeline service: {e}"
-            ) from e
 
     def delete(self) -> None:
         """Shutdown the active pipeline.
@@ -94,28 +113,22 @@ class Pipeline:
             httpx.HTTPStatusError: If the API request fails.
             httpx.RequestError: If there is a network error.
         """
-        try:
-            # Use pipeline-specific endpoint if pipeline_id is available
-            if self.pipeline_id:
-                endpoint = f"{self.ENDPOINT}/{self.pipeline_id}"
-            else:
-                endpoint = f"{self.ENDPOINT}/shutdown"
-                
-            response = self.client.delete(endpoint)
-            response.raise_for_status()
+        # Delegate to manager if available
+        if self.manager:
+            self.manager.delete(self.pipeline_id)
+            return
 
+        try:
+            # Use pipeline-specific endpoint since pipeline_id is required
+            endpoint = f"{self.ENDPOINT}/{self.pipeline_id}"
+            self._request("DELETE", endpoint)
             self._track_event("PipelineDeleted")
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
                 self._track_event("PipelineDeleteError", error_type="PipelineNotFound")
-                if self.pipeline_id:
-                    raise errors.PipelineNotFoundError(
-                        f"Pipeline with id '{self.pipeline_id}' not found"
-                    ) from e
-                else:
-                    raise errors.PipelineNotFoundError(
-                        "No active pipeline to shutdown"
-                    ) from e
+                raise errors.PipelineNotFoundError(
+                    f"Pipeline with id '{self.pipeline_id}' not found"
+                ) from e
             else:
                 self._track_event(
                     "PipelineDeleteError", error_type="InternalServerError"
@@ -123,11 +136,6 @@ class Pipeline:
                 raise errors.InternalServerError(
                     f"Failed to shutdown pipeline: {e.response.text}"
                 ) from e
-        except httpx.RequestError as e:
-            self._track_event("PipelineDeleteError", error_type="ConnectionError")
-            raise errors.ConnectionError(
-                f"Failed to connect to pipeline service: {e}"
-            ) from e
 
     @staticmethod
     def validate_config(config: dict[str, Any]) -> bool:
@@ -164,8 +172,7 @@ class Pipeline:
             httpx.HTTPStatusError: If the API request fails.
         """
         try:
-            response = self.client.get(self.ENDPOINT)
-            response.raise_for_status()
+            response = self._request("GET", self.ENDPOINT)
             return response.json().get("id")
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
@@ -176,15 +183,8 @@ class Pipeline:
                 raise errors.InternalServerError(
                     f"Failed to get running pipeline: {e.response.text}"
                 ) from e
-        except httpx.RequestError as e:
-            self._track_event("PipelineGetError", error_type="ConnectionError")
-            raise errors.ConnectionError(
-                f"Failed to connect to pipeline service: {e}"
-            ) from e
 
-    def disable_tracking(self) -> None:
-        """Disable tracking of pipeline events."""
-        self._tracking.enabled = False
+
 
     def to_dict(self) -> dict[str, Any]:
         """Convert the pipeline configuration to a dictionary.
@@ -229,7 +229,7 @@ class Pipeline:
             mechanism = self.config.source.connection_params.mechanism
 
             return {
-                "pipeline_id": self.pipeline_id or self.config.pipeline_id,
+                "pipeline_id": self.pipeline_id,
                 "join_enabled": join_enabled,
                 "deduplication_enabled": deduplication_enabled,
                 "source_auth_method": mechanism,
@@ -238,7 +238,7 @@ class Pipeline:
                 "source_skip_auth": skip_auth,
             }
         else:
-            return {"pipeline_id": self.pipeline_id} if self.pipeline_id else {}
+            return {"pipeline_id": self.pipeline_id}
 
     def _track_event(self, event_name: str, **kwargs: Any) -> None:
         pipeline_properties = self._tracking_info()

@@ -5,17 +5,16 @@ from typing import Any, List
 import httpx
 
 from . import errors, models
-from .pipeline import Pipeline
+from .client import Client
 from .tracking import Tracking
 
 
-class PipelineManager:
+class PipelineManager(Client):
     """
     Manager class for handling multiple Pipeline instances.
     """
 
     ENDPOINT = "/api/v1/pipeline"
-    _tracking = Tracking()
 
     def __init__(self, url: str = "http://localhost:8080"):
         """Initialize the PipelineManager class.
@@ -23,10 +22,9 @@ class PipelineManager:
         Args:
             url: URL of the GlassFlow Clickhouse ETL service
         """
-        self.url = url
-        self.client = httpx.Client(base_url=url)
+        super().__init__(url)
 
-    def get(self, pipeline_id: str) -> Pipeline:
+    def get(self, pipeline_id: str):
         """Fetch a pipeline by its ID.
 
         Args:
@@ -41,13 +39,15 @@ class PipelineManager:
             ConnectionError: If there is a network error
         """
         try:
-            response = self.client.get(f"{self.ENDPOINT}/{pipeline_id}")
-            response.raise_for_status()
+            response = self._request("GET", f"{self.ENDPOINT}/{pipeline_id}")
             pipeline_data = response.json()
             
             # Create a PipelineConfig from the response data
             config = models.PipelineConfig.model_validate(pipeline_data)
-            return Pipeline(config=config, url=self.url, pipeline_id=pipeline_id)
+            
+            # Import here to avoid circular import
+            from .pipeline import Pipeline
+            return Pipeline(config=config, url=self.url, pipeline_id=pipeline_id, manager=self)
             
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
@@ -60,11 +60,6 @@ class PipelineManager:
                 raise errors.InternalServerError(
                     f"Failed to get pipeline {pipeline_id}: {e.response.text}"
                 ) from e
-        except httpx.RequestError as e:
-            self._track_event("PipelineGetError", error_type="ConnectionError")
-            raise errors.ConnectionError(
-                f"Failed to connect to pipeline service: {e}"
-            ) from e
 
     def list(self) -> List[str]:
         """Returns a list of available pipeline IDs.
@@ -77,8 +72,7 @@ class PipelineManager:
             ConnectionError: If there is a network error
         """
         try:
-            response = self.client.get(self.ENDPOINT)
-            response.raise_for_status()
+            response = self._request("GET", self.ENDPOINT)
             data = response.json()
             
             # Handle different response formats
@@ -103,13 +97,8 @@ class PipelineManager:
                 raise errors.InternalServerError(
                     f"Failed to list pipelines: {e.response.text}"
                 ) from e
-        except httpx.RequestError as e:
-            self._track_event("PipelineListError", error_type="ConnectionError")
-            raise errors.ConnectionError(
-                f"Failed to connect to pipeline service: {e}"
-            ) from e
 
-    def create(self, pipeline_config: dict[str, Any] | models.PipelineConfig) -> Pipeline:
+    def create(self, pipeline_config: dict[str, Any] | models.PipelineConfig):
         """Creates a new pipeline with the given config.
 
         Args:
@@ -131,7 +120,8 @@ class PipelineManager:
             config = pipeline_config
 
         try:
-            response = self.client.post(
+            self._request(
+                "POST",
                 self.ENDPOINT,
                 json=config.model_dump(
                     mode="json",
@@ -139,10 +129,12 @@ class PipelineManager:
                     exclude_none=True,
                 ),
             )
-            response.raise_for_status()
 
             self._track_event("PipelineDeployed")
-            return Pipeline(config=config, url=self.url, pipeline_id=config.pipeline_id)
+            
+            # Import here to avoid circular import
+            from .pipeline import Pipeline
+            return Pipeline(config=config, url=self.url, pipeline_id=config.pipeline_id, manager=self)
             
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 403:
@@ -170,11 +162,6 @@ class PipelineManager:
                 raise errors.InternalServerError(
                     f"Failed to create pipeline: {e.response.text}"
                 ) from e
-        except httpx.RequestError as e:
-            self._track_event("PipelineCreateError", error_type="ConnectionError")
-            raise errors.ConnectionError(
-                f"Failed to connect to pipeline service: {e}"
-            ) from e
 
     def delete(self, pipeline_id: str) -> None:
         """Deletes the pipeline with the given ID.
@@ -188,9 +175,7 @@ class PipelineManager:
             ConnectionError: If there is a network error
         """
         try:
-            response = self.client.delete(f"{self.ENDPOINT}/{pipeline_id}")
-            response.raise_for_status()
-
+            self._request("DELETE", f"{self.ENDPOINT}/{pipeline_id}")
             self._track_event("PipelineDeleted")
             
         except httpx.HTTPStatusError as e:
@@ -206,16 +191,4 @@ class PipelineManager:
                 raise errors.InternalServerError(
                     f"Failed to delete pipeline {pipeline_id}: {e.response.text}"
                 ) from e
-        except httpx.RequestError as e:
-            self._track_event("PipelineDeleteError", error_type="ConnectionError")
-            raise errors.ConnectionError(
-                f"Failed to connect to pipeline service: {e}"
-            ) from e
 
-    def disable_tracking(self) -> None:
-        """Disable tracking of pipeline events."""
-        self._tracking.enabled = False
-
-    def _track_event(self, event_name: str, **kwargs: Any) -> None:
-        """Track an event with the given name and properties."""
-        self._tracking.track_event(event_name, kwargs)
