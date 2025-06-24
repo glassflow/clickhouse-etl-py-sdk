@@ -36,6 +36,8 @@ pip install glassflow-clickhouse-etl
 
 ## Quick Start
 
+### Using Pipeline (Single Pipeline Management)
+
 ```python
 from glassflow_clickhouse_etl import Pipeline
 
@@ -102,6 +104,30 @@ pipeline = Pipeline(pipeline_config)
 
 # Create the pipeline
 pipeline.create()
+```
+
+### Using PipelineManager (Multiple Pipeline Management)
+
+```python
+from glassflow_clickhouse_etl import PipelineManager
+
+# Initialize the manager
+manager = PipelineManager(url="your-glassflow-etl-url")
+
+# Create a pipeline
+pipeline = manager.create(pipeline_config)
+
+# Get a pipeline by ID
+pipeline = manager.get("my-pipeline-id")
+
+# List all pipeline IDs
+pipeline_ids = manager.list()
+
+# Delete a pipeline
+manager.delete("my-pipeline-id")
+
+# Or delete via pipeline instance
+pipeline.delete()
 ```
 
 ## Pipeline Configuration

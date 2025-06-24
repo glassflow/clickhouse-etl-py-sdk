@@ -109,11 +109,11 @@ class PipelineManager:
                 f"Failed to connect to pipeline service: {e}"
             ) from e
 
-    def create(self, pipeline_config: dict[str, Any]) -> Pipeline:
+    def create(self, pipeline_config: dict[str, Any] | models.PipelineConfig) -> Pipeline:
         """Creates a new pipeline with the given config.
 
         Args:
-            pipeline_config: Dictionary containing the pipeline configuration
+            pipeline_config: Dictionary or PipelineConfig object containing the pipeline configuration
 
         Returns:
             Pipeline: A Pipeline instance for the created pipeline
