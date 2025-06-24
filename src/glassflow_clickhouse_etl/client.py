@@ -44,6 +44,7 @@ class Client:
             httpx.Response: The response object
 
         Raises:
+            httpx.HTTPStatusError: If the API request fails with HTTP errors (to be handled by subclasses)
             ConnectionError: If there is a network error
             InternalServerError: If the API request fails with non-specific errors
         """
