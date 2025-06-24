@@ -21,17 +21,20 @@ class Pipeline:
         self,
         config: models.PipelineConfig | dict[str, Any] | None = None,
         url: str = "http://localhost:8080",
+        pipeline_id: str | None = None,
     ):
         """Initialize the Pipeline class.
 
         Args:
             config: Pipeline configuration
             url: URL of the GlassFlow Clickhouse ETL service
+            pipeline_id: Explicit pipeline ID for this instance
         """
         if isinstance(config, dict):
             config = models.PipelineConfig.model_validate(config)
 
         self.config = config
+        self.pipeline_id = pipeline_id or (config.pipeline_id if config else None)
         self.client = httpx.Client(base_url=url)
 
     def create(self) -> None:
@@ -92,16 +95,27 @@ class Pipeline:
             httpx.RequestError: If there is a network error.
         """
         try:
-            response = self.client.delete(f"{self.ENDPOINT}/shutdown")
+            # Use pipeline-specific endpoint if pipeline_id is available
+            if self.pipeline_id:
+                endpoint = f"{self.ENDPOINT}/{self.pipeline_id}"
+            else:
+                endpoint = f"{self.ENDPOINT}/shutdown"
+                
+            response = self.client.delete(endpoint)
             response.raise_for_status()
 
             self._track_event("PipelineDeleted")
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
                 self._track_event("PipelineDeleteError", error_type="PipelineNotFound")
-                raise errors.PipelineNotFoundError(
-                    "No active pipeline to shutdown"
-                ) from e
+                if self.pipeline_id:
+                    raise errors.PipelineNotFoundError(
+                        f"Pipeline with id '{self.pipeline_id}' not found"
+                    ) from e
+                else:
+                    raise errors.PipelineNotFoundError(
+                        "No active pipeline to shutdown"
+                    ) from e
             else:
                 self._track_event(
                     "PipelineDeleteError", error_type="InternalServerError"
@@ -172,6 +186,21 @@ class Pipeline:
         """Disable tracking of pipeline events."""
         self._tracking.enabled = False
 
+    def to_dict(self) -> dict[str, Any]:
+        """Convert the pipeline configuration to a dictionary.
+
+        Returns:
+            dict: Pipeline configuration as a dictionary
+        """
+        if self.config is None:
+            return {}
+        
+        return self.config.model_dump(
+            mode="json",
+            by_alias=True,
+            exclude_none=True,
+        )
+
     def _tracking_info(self) -> dict[str, Any]:
         """Get information about the active pipeline."""
         if self.config is not None:
@@ -200,7 +229,7 @@ class Pipeline:
             mechanism = self.config.source.connection_params.mechanism
 
             return {
-                "pipeline_id": self.config.pipeline_id,
+                "pipeline_id": self.pipeline_id or self.config.pipeline_id,
                 "join_enabled": join_enabled,
                 "deduplication_enabled": deduplication_enabled,
                 "source_auth_method": mechanism,
@@ -209,7 +238,7 @@ class Pipeline:
                 "source_skip_auth": skip_auth,
             }
         else:
-            return {}
+            return {"pipeline_id": self.pipeline_id} if self.pipeline_id else {}
 
     def _track_event(self, event_name: str, **kwargs: Any) -> None:
         pipeline_properties = self._tracking_info()
