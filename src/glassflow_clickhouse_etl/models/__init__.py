@@ -1,3 +1,4 @@
+from .config import GlassFlowConfig
 from .data_types import ClickhouseDataType, KafkaDataType
 from .join import JoinConfig, JoinOrientation, JoinSourceConfig, JoinType
 from .pipeline import PipelineConfig
@@ -36,4 +37,5 @@ __all__ = [
     "SourceConfig",
     "SourceType",
     "TopicConfig",
+    "GlassFlowConfig",
 ]
