@@ -14,6 +14,8 @@ from .source import (
     SourceType,
     TopicConfig,
 )
+from .config import GlassFlowConfig
+
 
 __all__ = [
     "ClickhouseDataType",
@@ -36,4 +38,5 @@ __all__ = [
     "SourceConfig",
     "SourceType",
     "TopicConfig",
+    "GlassFlowConfig",
 ]

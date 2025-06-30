@@ -1,67 +1,105 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Union
+from typing import Any, List
 
-import httpx
+from . import errors, models
+from .pipeline import Pipeline
+from .api_client import APIClient
 
-from . import errors
-from .tracking import Tracking
 
-
-class Client:
+class Client(APIClient):
     """
-    Base client for HTTP operations with centralized error handling.
+    Manager class for handling multiple Pipeline instances.
     """
 
-    _tracking = Tracking()
+    ENDPOINT = "/api/v1/pipeline"
 
-    def __init__(self, url: str = "http://localhost:8080"):
-        """Initialize the Client class.
+    def __init__(self, host: str | None = None) -> None:
+        """Initialize the PipelineManager class.
 
         Args:
-            url: URL of the GlassFlow Clickhouse ETL service
+            host: GlassFlow API host
         """
-        self.url = url
-        self.client = httpx.Client(base_url=url)
+        super().__init__(host=host)
 
-    def _request(
-        self,
-        method: str,
-        endpoint: str,
-        json: Optional[Dict[str, Any]] = None,
-        **kwargs: Any
-    ) -> httpx.Response:
-        """
-        Generic request method with centralized error handling.
+    def get_pipeline(self, pipeline_id: str):
+        """Fetch a pipeline by its ID.
 
         Args:
-            method: HTTP method (GET, POST, DELETE, etc.)
-            endpoint: API endpoint
-            json: JSON data to send
-            **kwargs: Additional arguments to pass to httpx
+            pipeline_id: The ID of the pipeline to fetch
 
         Returns:
-            httpx.Response: The response object
+            Pipeline: A Pipeline instance for the given ID
 
         Raises:
-            httpx.HTTPStatusError: If the API request fails with HTTP errors (to be handled by subclasses)
-            ConnectionError: If there is a network error
-            InternalServerError: If the API request fails with non-specific errors
+            PipelineNotFoundError: If pipeline is not found
+            APIError: If the API request fails
+        """
+        return Pipeline(host=self.host, pipeline_id=pipeline_id).get()
+
+    def list_pipelines(self) -> List[str]:
+        """Returns a list of available pipeline IDs.
+
+        Returns:
+            List[str]: List of pipeline IDs
+
+        Raises:
+            APIError: If the API request fails
         """
         try:
-            response = self.client.request(method, endpoint, json=json, **kwargs)
-            response.raise_for_status()
-            return response
-        except httpx.RequestError as e:
-            self._track_event("RequestError", error_type="ConnectionError")
-            raise errors.ConnectionError(
-                f"Failed to connect to pipeline service: {e}"
+            response = self._request("GET", self.ENDPOINT)
+            data = response.json()
+
+            # Handle different response formats
+            if isinstance(data, list):
+                # If response is a list of pipeline objects
+                return [pipeline.get("id", pipeline.get("pipeline_id")) for pipeline in data if "id" in pipeline or "pipeline_id" in pipeline]
+            elif isinstance(data, dict) and "pipelines" in data:
+                # If response is wrapped in a "pipelines" key
+                return [pipeline.get("id", pipeline.get("pipeline_id")) for pipeline in data["pipelines"] if "id" in pipeline or "pipeline_id" in pipeline]
+            elif isinstance(data, dict) and "id" in data:
+                # If response is a single pipeline (current behavior)
+                return [data["id"]]
+            else:
+                return []
+
+        except errors.NotFoundError as e:
+            # No pipelines found, return empty list
+            return []
+        except errors.APIError as e:
+            self._track_event("PipelineListError", error_type="InternalServerError")
+            raise errors.APIError(
+                f"Failed to list pipelines: {e.response.text}"
             ) from e
+
+    def create_pipeline(self, pipeline_config: dict[str, Any] | models.PipelineConfig):
+        """Creates a new pipeline with the given config.
+
+        Args:
+            pipeline_config: Dictionary or PipelineConfig object containing the pipeline configuration
+
+        Returns:
+            Pipeline: A Pipeline instance for the created pipeline
+
+        Raises:
+            PipelineAlreadyExistsError: If pipeline already exists
+            PipelineInvalidConfigurationError: If configuration is invalid
+            APIError: If the API request fails
+        """
+        return Pipeline(config=pipeline_config, host=self.host).create()
+
+    def delete_pipeline(self, pipeline_id: str) -> None:
+        """Deletes the pipeline with the given ID.
+
+        Args:
+            pipeline_id: The ID of the pipeline to delete
+
+        Raises:
+            PipelineNotFoundError: If pipeline is not found
+            APIError: If the API request fails
+        """
+        Pipeline(host=self.host, pipeline_id=pipeline_id).delete()
 
     def disable_tracking(self) -> None:
         """Disable tracking of pipeline events."""
         self._tracking.enabled = False
-
-    def _track_event(self, event_name: str, **kwargs: Any) -> None:
-        """Track an event with the given name and properties."""
-        self._tracking.track_event(event_name, kwargs)
