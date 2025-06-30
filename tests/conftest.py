@@ -4,6 +4,8 @@ from unittest.mock import MagicMock, patch
 import httpx
 import pytest
 
+from glassflow_clickhouse_etl.pipeline import Pipeline
+
 
 @pytest.fixture
 def mock_track(autouse=True):
@@ -405,3 +407,20 @@ def mock_server_error_response():
 def mock_connection_error():
     """Fixture for a connection error."""
     return httpx.ConnectError("Connection failed")
+
+
+@pytest.fixture
+def mock_success_get_pipeline(valid_pipeline_config):
+    """Fixture for a successful GET pipeline response."""
+    mock_response = MagicMock(spec=httpx.Response)
+    mock_response.status_code = 200
+    mock_response.json.return_value = valid_pipeline_config
+    mock_response.raise_for_status.return_value = None
+    return mock_response
+
+
+@pytest.fixture
+def pipeline_from_id(mock_success_get_pipeline):
+    """Fixture for a successful GET request."""
+    with patch("httpx.Client.request", return_value=mock_success_get_pipeline):
+        return Pipeline(pipeline_id="test-pipeline-id").get()
