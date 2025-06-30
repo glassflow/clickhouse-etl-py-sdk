@@ -36,95 +36,140 @@ pip install glassflow-clickhouse-etl
 
 ## Quick Start
 
-### Using Pipeline (Single Pipeline Management)
+### Initialize client
 
 ```python
-from glassflow_clickhouse_etl import Pipeline
+from glassflow_clickhouse_etl import Client
 
-
-pipeline_config = {
-  "pipeline_id": "test-pipeline",
-  "source": {
-    "type": "kafka",
-    "provider": "aiven",
-    "connection_params": {
-      "brokers": ["localhoust:9092"],
-      "protocol": "SASL_SSL",
-      "mechanism": "SCRAM-SHA-256",
-      "username": "user",
-      "password": "pass"
-    }
-    "topics": [
-      {
-        "consumer_group_initial_offset": "earliest",
-        "id": "test-topic",
-        "name": "test-topic",
-        "schema": {
-          "type": "json",
-          "fields": [
-            {"name": "id", "type": "string" },
-            {"name": "email", "type": "string"}
-          ]
-        },
-        "deduplication": {
-          "id_field": "id",
-          "id_field_type": "string",
-          "time_window": "1h",
-          "enabled": True
-        }
-      }
-    ],
-  },
-  "sink": {
-    "type": "clickhouse",
-    "host": "localhost:8443",
-    "port": 8443,
-    "database": "test",
-    "username": "default",
-    "password": "pass",
-    "table_mapping": [
-      {
-        "source_id": "test_table",
-        "field_name": "id",
-        "column_name": "user_id",
-        "column_type": "UUID"
-      },
-      {
-        "source_id": "test_table",
-        "field_name": "email",
-        "column_name": "email",
-        "column_type": "String"
-      }
-    ]
-  }
-}
-
-# Create a pipeline from a JSON configuration
-pipeline = Pipeline(pipeline_config)
-
-# Create the pipeline
-pipeline.create()
+# Initialize GlassFlow client
+client = Client(host="your-glassflow-etl-url")
 ```
 
-### Using PipelineManager (Multiple Pipeline Management)
+### Create a pipeline
 
 ```python
-from glassflow_clickhouse_etl import PipelineManager
-
-# Initialize the manager
-manager = PipelineManager(url="your-glassflow-etl-url")
+pipeline_config = {
+    "pipeline_id": "deduplication-demo-pipeline",
+    "source": {
+      "type": "kafka",
+      "provider": "confluent",
+      "connection_params": {
+        "brokers": [
+          "kafka:9093"
+        ],
+        "protocol": "PLAINTEXT",
+        "skip_auth": True
+      },
+      "topics": [
+        {
+          "consumer_group_initial_offset": "latest",
+          "name": "users",
+          "schema": {
+            "type": "json",
+            "fields": [
+              {
+                "name": "event_id",
+                "type": "string"
+              },
+              {
+                "name": "user_id",
+                "type": "string"
+              },
+              {
+                "name": "name",
+                "type": "string"
+              },
+              {
+                "name": "email",
+                "type": "string"
+              },
+              {
+                "name": "created_at",
+                "type": "string"
+              }
+            ]
+          },
+          "deduplication": {
+            "enabled": True,
+            "id_field": "event_id",
+            "id_field_type": "string",
+            "time_window": "1h"
+          }
+        }
+      ]
+    },
+    "join": {
+      "enabled": False
+    },
+    "sink": {
+      "type": "clickhouse",
+      "provider": "localhost",
+      "host": "clickhouse",
+      "port": "9000",
+      "database": "default",
+      "username": "default",
+      "password": "c2VjcmV0",
+      "secure": False,
+      "max_batch_size": 1000,
+      "max_delay_time": "30s",
+      "table": "users_dedup",
+      "table_mapping": [
+        {
+          "source_id": "users",
+          "field_name": "event_id",
+          "column_name": "event_id",
+          "column_type": "UUID"
+        },
+        {
+          "source_id": "users",
+          "field_name": "user_id",
+          "column_name": "user_id",
+          "column_type": "UUID"
+        },
+        {
+          "source_id": "users",
+          "field_name": "created_at",
+          "column_name": "created_at",
+          "column_type": "DateTime"
+        },
+        {
+          "source_id": "users",
+          "field_name": "name",
+          "column_name": "name",
+          "column_type": "String"
+        },
+        {
+          "source_id": "users",
+          "field_name": "email",
+          "column_name": "email",
+          "column_type": "String"
+        }
+      ]
+    }
+}
 
 # Create a pipeline
-pipeline = manager.create(pipeline_config)
+pipeline = client.create_pipeline(pipeline_config)
+```
 
+or get an existing pipeline using the pipeline ID:
+
+```python
 # Get a pipeline by ID
-pipeline = manager.get("my-pipeline-id")
+pipeline = client.get_pipeline("my-pipeline-id")
+```
 
-# List all pipeline IDs
-pipeline_ids = manager.list()
+### List pipelines
 
+```python
+pipeline_ids = client.list_pipelines()
+```
+
+### Delete pipeline
+
+```python
 # Delete a pipeline
-manager.delete("my-pipeline-id")
+client.delete_pipeline("my-pipeline-id")
 
 # Or delete via pipeline instance
 pipeline.delete()
@@ -145,8 +190,10 @@ export GF_TRACKING_ENABLED=false
 
 2. Programmatically using the `disable_tracking` method:
 ```python
-pipeline = Pipeline(pipeline_config)
-pipeline.disable_tracking()
+from glassflow_clickhouse_etl import Client
+
+client = Client(host="my-glassflow-host")
+client.disable_tracking()
 ```
 
 The tracking collects anonymous information about:
