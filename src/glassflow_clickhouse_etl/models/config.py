@@ -9,9 +9,11 @@ from pydantic import BaseModel
 class GlassFlowSettings(BaseModel):
     host: str = "http://localhost:8080"
 
+
 class AnalyticsSettings(BaseModel):
     enabled: bool = True
     distinct_id: str = str(uuid.uuid4())
+
 
 class GlassFlowConfig(BaseModel):
     config_file: Path = Path("~/.glassflow/clickhouse.conf")

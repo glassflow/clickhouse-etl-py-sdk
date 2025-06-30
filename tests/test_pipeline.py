@@ -70,7 +70,9 @@ def test_delete_pipeline_success(valid_pipeline_config, mock_success_response):
         "httpx.Client.request", return_value=mock_success_response
     ) as mock_delete:
         pipeline.delete()
-        mock_delete.assert_called_once_with("DELETE", f"{pipeline.ENDPOINT}/{config.pipeline_id}")
+        mock_delete.assert_called_once_with(
+            "DELETE", f"{pipeline.ENDPOINT}/{config.pipeline_id}"
+        )
 
 
 def test_delete_pipeline_not_found(valid_pipeline_config, mock_not_found_response):
@@ -126,7 +128,9 @@ def test_tracking_info(
         "source_skip_auth": False,
     }
 
-    pipeline = Pipeline(host="http://localhost:8080", config=valid_pipeline_config_with_dedup_disabled)
+    pipeline = Pipeline(
+        host="http://localhost:8080", config=valid_pipeline_config_with_dedup_disabled
+    )
     assert pipeline._tracking_info() == {
         "pipeline_id": valid_pipeline_config_with_dedup_disabled["pipeline_id"],
         "join_enabled": True,
@@ -137,7 +141,9 @@ def test_tracking_info(
         "source_skip_auth": False,
     }
 
-    pipeline = Pipeline(host="http://localhost:8080", config=valid_pipeline_config_without_joins)
+    pipeline = Pipeline(
+        host="http://localhost:8080", config=valid_pipeline_config_without_joins
+    )
     assert pipeline._tracking_info() == {
         "pipeline_id": valid_pipeline_config_without_joins["pipeline_id"],
         "join_enabled": False,
@@ -148,7 +154,10 @@ def test_tracking_info(
         "source_skip_auth": False,
     }
 
-    pipeline = Pipeline(host="http://localhost:8080", config=valid_pipeline_config_without_joins_and_dedup_disabled)
+    pipeline = Pipeline(
+        host="http://localhost:8080",
+        config=valid_pipeline_config_without_joins_and_dedup_disabled,
+    )
     pipeline_id = valid_pipeline_config_without_joins_and_dedup_disabled["pipeline_id"]
     assert pipeline._tracking_info() == {
         "pipeline_id": pipeline_id,

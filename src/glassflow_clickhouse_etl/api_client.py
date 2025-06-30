@@ -13,6 +13,7 @@ class APIClient:
     """
     API client
     """
+
     version = "1"
     glassflow_config = GlassFlowConfig()
     _tracking = Tracking(glassflow_config.analytics.distinct_id)
@@ -26,10 +27,8 @@ class APIClient:
         self.host = host if host else self.glassflow_config.glassflow.host
         self.http_client = httpx.Client(base_url=self.host)
 
-    def _request(self,
-        method: str,
-        endpoint: str,
-        **kwargs: Any
+    def _request(
+        self, method: str, endpoint: str, **kwargs: Any
     ) -> httpx.Response | None:
         """
         Generic request method with centralized error handling.
@@ -43,7 +42,8 @@ class APIClient:
             httpx.Response: The response object
 
         Raises:
-            httpx.HTTPStatusError: If the API request fails with HTTP errors (to be handled by subclasses)
+            httpx.HTTPStatusError: If the API request fails with HTTP errors
+                (to be handled by subclasses)
             RequestError: If there is a network error
         """
         try:
@@ -55,7 +55,7 @@ class APIClient:
         except httpx.RequestError as e:
             self._track_event("RequestError", error_type="ConnectionError")
             raise errors.ConnectionError(
-                f"Failed to connect to GlassFlow ETL API"
+                "Failed to connect to GlassFlow ETL API"
             ) from e
 
     @staticmethod
@@ -72,7 +72,6 @@ class APIClient:
             raise errors.ServerError(status_code, "Server error")
         else:
             raise errors.APIError(status_code, "An error occurred")
-
 
     def _track_event(self, event_name: str, **kwargs: Any) -> None:
         """Track an event with the given name and properties."""

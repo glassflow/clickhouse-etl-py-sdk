@@ -14,6 +14,7 @@ class ConnectionError(RequestError):
 # Server/API-level errors
 class APIError(GlassFlowError):
     """Base for API response errors."""
+
     def __init__(self, status_code, message=None, response=None):
         self.status_code = status_code
         self.response = response

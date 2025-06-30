@@ -3,9 +3,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from glassflow_clickhouse_etl import errors
+from glassflow_clickhouse_etl.client import Client
 from glassflow_clickhouse_etl.models import PipelineConfig
 from glassflow_clickhouse_etl.pipeline import Pipeline
-from glassflow_clickhouse_etl.client import Client
 
 
 def test_client_init():
@@ -22,7 +22,9 @@ def test_client_get_pipeline_success(valid_pipeline_config, mock_success_respons
 
     mock_success_response.json.return_value = valid_pipeline_config
 
-    with patch("httpx.Client.request", return_value=mock_success_response) as mock_request:
+    with patch(
+        "httpx.Client.request", return_value=mock_success_response
+    ) as mock_request:
         pipeline = client.get_pipeline(pipeline_id)
         mock_request.assert_called_once_with("GET", f"{client.ENDPOINT}/{pipeline_id}")
         assert isinstance(pipeline, Pipeline)
@@ -49,7 +51,7 @@ def test_client_list_pipelines_success_list_format():
     mock_response.json.return_value = [
         {"id": "pipeline-1"},
         {"id": "pipeline-2"},
-        {"pipeline_id": "pipeline-3"}
+        {"pipeline_id": "pipeline-3"},
     ]
 
     with patch("httpx.Client.request", return_value=mock_response) as mock_request:
@@ -89,14 +91,20 @@ def test_client_create_pipeline_success(valid_pipeline_config, mock_success_resp
     """Test successful pipeline creation."""
     client = Client()
 
-    with patch("httpx.Client.request", return_value=mock_success_response) as mock_request:
+    with patch(
+        "httpx.Client.request", return_value=mock_success_response
+    ) as mock_request:
         pipeline = client.create_pipeline(valid_pipeline_config)
-        mock_request.assert_called_once_with("POST", client.ENDPOINT, json=mock_request.call_args[1]["json"])
+        mock_request.assert_called_once_with(
+            "POST", client.ENDPOINT, json=mock_request.call_args[1]["json"]
+        )
         assert isinstance(pipeline, Pipeline)
         assert pipeline.pipeline_id == valid_pipeline_config["pipeline_id"]
 
 
-def test_client_create_pipeline_already_exists(valid_pipeline_config, mock_forbidden_response):
+def test_client_create_pipeline_already_exists(
+    valid_pipeline_config, mock_forbidden_response
+):
     """Test pipeline creation when pipeline already exists."""
     client = Client()
 
@@ -105,13 +113,17 @@ def test_client_create_pipeline_already_exists(valid_pipeline_config, mock_forbi
             client.create_pipeline(valid_pipeline_config)
 
 
-def test_client_delete_pipeline_success(mock_success_response, mock_success_get_pipeline):
+def test_client_delete_pipeline_success(
+    mock_success_response, mock_success_get_pipeline
+):
     """Test successful pipeline deletion."""
     client = Client()
     pipeline_id = "test-pipeline-id"
 
     with patch("glassflow_clickhouse_etl.pipeline.Pipeline.get") as pipeline_get:
-        with patch("httpx.Client.request", return_value=mock_success_response) as mock_delete_request:
+        with patch(
+            "httpx.Client.request", return_value=mock_success_response
+        ) as mock_delete_request:
             client.delete_pipeline(pipeline_id)
             pipeline_get.assert_called_once_with()
             mock_delete_request.assert_called_once_with(
@@ -142,6 +154,10 @@ def test_pipeline_to_dict(valid_pipeline_config):
 
 def test_pipeline_delete(pipeline_from_id, mock_success_response):
     """Test Pipeline delete with explicit pipeline_id."""
-    with patch("httpx.Client.request", return_value=mock_success_response) as mock_request:
+    with patch(
+        "httpx.Client.request", return_value=mock_success_response
+    ) as mock_request:
         pipeline_from_id.delete()
-        mock_request.assert_called_once_with("DELETE", f"{pipeline_from_id.ENDPOINT}/{pipeline_from_id.pipeline_id}")
+        mock_request.assert_called_once_with(
+            "DELETE", f"{pipeline_from_id.ENDPOINT}/{pipeline_from_id.pipeline_id}"
+        )

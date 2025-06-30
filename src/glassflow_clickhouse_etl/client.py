@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import Any, List
 
 from . import errors, models
-from .pipeline import Pipeline
 from .api_client import APIClient
+from .pipeline import Pipeline
 
 
 class Client(APIClient):
@@ -53,30 +53,37 @@ class Client(APIClient):
             # Handle different response formats
             if isinstance(data, list):
                 # If response is a list of pipeline objects
-                return [pipeline.get("id", pipeline.get("pipeline_id")) for pipeline in data if "id" in pipeline or "pipeline_id" in pipeline]
+                return [
+                    pipeline.get("id", pipeline.get("pipeline_id"))
+                    for pipeline in data
+                    if "id" in pipeline or "pipeline_id" in pipeline
+                ]
             elif isinstance(data, dict) and "pipelines" in data:
                 # If response is wrapped in a "pipelines" key
-                return [pipeline.get("id", pipeline.get("pipeline_id")) for pipeline in data["pipelines"] if "id" in pipeline or "pipeline_id" in pipeline]
+                return [
+                    pipeline.get("id", pipeline.get("pipeline_id"))
+                    for pipeline in data["pipelines"]
+                    if "id" in pipeline or "pipeline_id" in pipeline
+                ]
             elif isinstance(data, dict) and "id" in data:
                 # If response is a single pipeline (current behavior)
                 return [data["id"]]
             else:
                 return []
 
-        except errors.NotFoundError as e:
+        except errors.NotFoundError:
             # No pipelines found, return empty list
             return []
         except errors.APIError as e:
             self._track_event("PipelineListError", error_type="InternalServerError")
-            raise errors.APIError(
-                f"Failed to list pipelines: {e.response.text}"
-            ) from e
+            raise errors.APIError(f"Failed to list pipelines: {e.response.text}") from e
 
     def create_pipeline(self, pipeline_config: dict[str, Any] | models.PipelineConfig):
         """Creates a new pipeline with the given config.
 
         Args:
-            pipeline_config: Dictionary or PipelineConfig object containing the pipeline configuration
+            pipeline_config: Dictionary or PipelineConfig object containing
+                the pipeline configuration
 
         Returns:
             Pipeline: A Pipeline instance for the created pipeline
