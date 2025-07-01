@@ -26,6 +26,7 @@ class SinkConfig(BaseModel):
     username: str
     password: str
     secure: bool = Field(default=False)
+    skip_certificate_verification: bool = Field(default=False)
     max_batch_size: int = Field(default=1000)
     max_delay_time: str = Field(default="10m")
     table: str
