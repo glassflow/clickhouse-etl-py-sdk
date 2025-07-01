@@ -28,6 +28,19 @@ class ClickhouseDataType(CaseInsensitiveStrEnum):
     UUID = "UUID"
     ENUM8 = "Enum8"
     ENUM16 = "Enum16"
+    LC_INT8 = "LowCardinality(Int8)"
+    LC_INT16 = "LowCardinality(Int16)"
+    LC_INT32 = "LowCardinality(Int32)"
+    LC_INT64 = "LowCardinality(Int64)"
+    LC_UINT8 = "LowCardinality(UInt8)"
+    LC_UINT16 = "LowCardinality(UInt16)"
+    LC_UINT32 = "LowCardinality(UInt32)"
+    LC_UINT64 = "LowCardinality(UInt64)"
+    LC_FLOAT32 = "LowCardinality(Float32)"
+    LC_FLOAT64 = "LowCardinality(Float64)"
+    LC_STRING = "LowCardinality(String)"
+    LC_FIXEDSTRING = "LowCardinality(FixedString)"
+    LC_DATETIME = "LowCardinality(DateTime)"
 
 
 kafka_to_clickhouse_data_type_mappings = {
@@ -39,20 +52,27 @@ kafka_to_clickhouse_data_type_mappings = {
         ClickhouseDataType.UUID,
         ClickhouseDataType.ENUM8,
         ClickhouseDataType.ENUM16,
+        ClickhouseDataType.LC_STRING,
+        ClickhouseDataType.LC_FIXEDSTRING,
+        ClickhouseDataType.LC_DATETIME,
     ],
-    KafkaDataType.INT8: [ClickhouseDataType.INT8],
-    KafkaDataType.INT16: [ClickhouseDataType.INT16],
-    KafkaDataType.INT32: [ClickhouseDataType.INT32],
+    KafkaDataType.INT8: [ClickhouseDataType.INT8, ClickhouseDataType.LC_INT8],
+    KafkaDataType.INT16: [ClickhouseDataType.INT16, ClickhouseDataType.LC_INT16],
+    KafkaDataType.INT32: [ClickhouseDataType.INT32, ClickhouseDataType.LC_INT32],
     KafkaDataType.INT64: [
         ClickhouseDataType.INT64,
         ClickhouseDataType.DATETIME,
         ClickhouseDataType.DATETIME64,
+        ClickhouseDataType.LC_INT64,
+        ClickhouseDataType.LC_DATETIME,
     ],
-    KafkaDataType.FLOAT32: [ClickhouseDataType.FLOAT32],
+    KafkaDataType.FLOAT32: [ClickhouseDataType.FLOAT32, ClickhouseDataType.LC_FLOAT32],
     KafkaDataType.FLOAT64: [
         ClickhouseDataType.FLOAT64,
         ClickhouseDataType.DATETIME,
         ClickhouseDataType.DATETIME64,
+        ClickhouseDataType.LC_FLOAT64,
+        ClickhouseDataType.LC_DATETIME,
     ],
     KafkaDataType.BOOL: [ClickhouseDataType.BOOL],
     KafkaDataType.BYTES: [ClickhouseDataType.STRING],
