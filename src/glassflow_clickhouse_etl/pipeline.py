@@ -6,10 +6,12 @@ import httpx
 from pydantic import ValidationError
 
 from . import errors, models
+from .api_client import APIClient
+from .dlq import DLQ
 from .tracking import Tracking
 
 
-class Pipeline:
+class Pipeline(APIClient):
     """
     Main class for managing Kafka to ClickHouse pipelines.
     """
@@ -28,11 +30,12 @@ class Pipeline:
             config: Pipeline configuration
             url: URL of the GlassFlow Clickhouse ETL service
         """
+        super().__init__(url)
         if isinstance(config, dict):
             config = models.PipelineConfig.model_validate(config)
 
         self.config = config
-        self.client = httpx.Client(base_url=url)
+        self._dlq = DLQ(url)
 
     def create(self) -> None:
         """Create a new pipeline with the given configuration."""
@@ -78,10 +81,7 @@ class Pipeline:
                     f"Failed to create pipeline: {e.response.text}"
                 ) from e
         except httpx.RequestError as e:
-            self._track_event("PipelineCreateError", error_type="ConnectionError")
-            raise errors.ConnectionError(
-                f"Failed to connect to pipeline service: {e}"
-            ) from e
+            self._handle_connection_error(e, "pipeline")
 
     def delete(self) -> None:
         """Shutdown the active pipeline.
@@ -110,10 +110,7 @@ class Pipeline:
                     f"Failed to shutdown pipeline: {e.response.text}"
                 ) from e
         except httpx.RequestError as e:
-            self._track_event("PipelineDeleteError", error_type="ConnectionError")
-            raise errors.ConnectionError(
-                f"Failed to connect to pipeline service: {e}"
-            ) from e
+            self._handle_connection_error(e, "pipeline")
 
     @staticmethod
     def validate_config(config: dict[str, Any]) -> bool:
@@ -163,14 +160,20 @@ class Pipeline:
                     f"Failed to get running pipeline: {e.response.text}"
                 ) from e
         except httpx.RequestError as e:
-            self._track_event("PipelineGetError", error_type="ConnectionError")
-            raise errors.ConnectionError(
-                f"Failed to connect to pipeline service: {e}"
-            ) from e
+            self._handle_connection_error(e, "pipeline")
 
     def disable_tracking(self) -> None:
         """Disable tracking of pipeline events."""
         self._tracking.enabled = False
+
+    @property
+    def dlq(self) -> DLQ:
+        """Get the DLQ (Dead Letter Queue) client for this pipeline.
+
+        Returns:
+            DLQ: The DLQ client instance
+        """
+        return self._dlq
 
     def _tracking_info(self) -> dict[str, Any]:
         """Get information about the active pipeline."""
