@@ -56,18 +56,9 @@ kafka_to_clickhouse_data_type_mappings = {
         ClickhouseDataType.LC_FIXEDSTRING,
         ClickhouseDataType.LC_DATETIME,
     ],
-    KafkaDataType.INT8: [
-        ClickhouseDataType.INT8,
-        ClickhouseDataType.LC_INT8
-    ],
-    KafkaDataType.INT16: [
-        ClickhouseDataType.INT16,
-        ClickhouseDataType.LC_INT16
-    ],
-    KafkaDataType.INT32: [
-        ClickhouseDataType.INT32,
-        ClickhouseDataType.LC_INT32
-    ],
+    KafkaDataType.INT8: [ClickhouseDataType.INT8, ClickhouseDataType.LC_INT8],
+    KafkaDataType.INT16: [ClickhouseDataType.INT16, ClickhouseDataType.LC_INT16],
+    KafkaDataType.INT32: [ClickhouseDataType.INT32, ClickhouseDataType.LC_INT32],
     KafkaDataType.INT64: [
         ClickhouseDataType.INT64,
         ClickhouseDataType.DATETIME,
@@ -75,10 +66,7 @@ kafka_to_clickhouse_data_type_mappings = {
         ClickhouseDataType.LC_INT64,
         ClickhouseDataType.LC_DATETIME,
     ],
-    KafkaDataType.FLOAT32: [
-        ClickhouseDataType.FLOAT32,
-        ClickhouseDataType.LC_FLOAT32
-    ],
+    KafkaDataType.FLOAT32: [ClickhouseDataType.FLOAT32, ClickhouseDataType.LC_FLOAT32],
     KafkaDataType.FLOAT64: [
         ClickhouseDataType.FLOAT64,
         ClickhouseDataType.DATETIME,
