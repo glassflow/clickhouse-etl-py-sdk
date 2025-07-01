@@ -1,77 +1,78 @@
 from __future__ import annotations
 
+from typing import Any
+
 import httpx
 
 from . import errors
+from .models import GlassFlowConfig
+from .tracking import Tracking
 
 
 class APIClient:
     """
-    Base class for API clients providing common HTTP functionality.
+    API client
     """
 
-    def __init__(self, url: str = "http://localhost:8080"):
-        """Initialize the API client.
+    version = "1"
+    glassflow_config = GlassFlowConfig()
+    _tracking = Tracking(glassflow_config.analytics.distinct_id)
+
+    def __init__(self, host: str | None = None):
+        """Initialize the API Client class.
 
         Args:
-            url: Base URL of the GlassFlow Clickhouse ETL service
+            host: Host URL of the GlassFlow Clickhouse ETL service
         """
-        self.client = httpx.Client(base_url=url)
+        self.host = host if host else self.glassflow_config.glassflow.host
+        self.http_client = httpx.Client(base_url=self.host)
 
-    def _handle_http_error(
-        self,
-        error: httpx.HTTPStatusError,
-        error_mappings: dict[int, tuple[type[Exception], str]] | None = None,
-        default_error_type: str = "InternalServerError",
-    ) -> None:
-        """Handle HTTP status errors with configurable error mappings.
+    def _request(
+        self, method: str, endpoint: str, **kwargs: Any
+    ) -> httpx.Response | None:
+        """
+        Generic request method with centralized error handling.
 
         Args:
-            error: The HTTP status error to handle
-            error_mappings: Dictionary mapping status codes to
-                (exception_class, error_type) tuples
-            default_error_type: Default error type for tracking when no mapping
-                is found
+            method: HTTP method (GET, POST, DELETE, etc.)
+            endpoint: API endpoint
+            **kwargs: Additional arguments to pass to httpx
+
+        Returns:
+            httpx.Response: The response object
+
+        Raises:
+            httpx.HTTPStatusError: If the API request fails with HTTP errors
+                (to be handled by subclasses)
+            RequestError: If there is a network error
         """
-        if error_mappings and error.response.status_code in error_mappings:
-            exception_class, error_type = error_mappings[
-                error.response.status_code
-            ]
-            if hasattr(self, "_track_event"):
-                self._track_event(
-                    f"{self.__class__.__name__}Error", error_type=error_type
-                )
-            raise exception_class(f"API error: {error.response.text}") from error
+        try:
+            response = self.http_client.request(method, endpoint, **kwargs)
+            response.raise_for_status()
+            return response
+        except httpx.HTTPStatusError as e:
+            self._raise_api_error(e.response)
+        except httpx.RequestError as e:
+            self._track_event("RequestError", error_type="ConnectionError")
+            raise errors.ConnectionError(
+                "Failed to connect to GlassFlow ETL API"
+            ) from e
+
+    @staticmethod
+    def _raise_api_error(response: httpx.Response) -> None:
+        """Raise an APIError based on the response."""
+        status_code = response.status_code
+        if status_code == 400:
+            raise errors.ValidationError(status_code, "Bad request")
+        elif status_code == 403:
+            raise errors.ForbiddenError(status_code, "Forbidden")
+        elif status_code == 404:
+            raise errors.NotFoundError(status_code, "Resource not found")
+        elif status_code == 500:
+            raise errors.ServerError(status_code, "Server error")
         else:
-            if hasattr(self, "_track_event"):
-                self._track_event(
-                    f"{self.__class__.__name__}Error",
-                    error_type=default_error_type,
-                )
-            raise errors.InternalServerError(
-                f"API request failed: {error.response.text}"
-            ) from error
+            raise errors.APIError(status_code, "An error occurred")
 
-    def _handle_connection_error(
-        self,
-        error: httpx.RequestError,
-        operation: str = "API operation",
-    ) -> None:
-        """Handle connection errors.
-
-        Args:
-            error: The connection error to handle
-            operation: Description of the operation that failed
-        """
-        if hasattr(self, "_track_event"):
-            self._track_event(
-                f"{self.__class__.__name__}Error", error_type="ConnectionError"
-            )
-        service_name = (
-            operation.replace("pipeline ", "")
-            .replace("getting ", "")
-            .replace(" pipeline", "")
-        )
-        raise errors.ConnectionError(
-            f"Failed to connect to {service_name} service: {error}"
-        ) from error
+    def _track_event(self, event_name: str, **kwargs: Any) -> None:
+        """Track an event with the given name and properties."""
+        self._tracking.track_event(event_name, kwargs)
