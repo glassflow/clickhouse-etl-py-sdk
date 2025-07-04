@@ -5,6 +5,7 @@ import httpx
 import pytest
 
 from glassflow_clickhouse_etl.pipeline import Pipeline
+from glassflow_clickhouse_etl.dlq import DLQ
 
 
 @pytest.fixture
@@ -424,3 +425,15 @@ def pipeline_from_id(mock_success_get_pipeline):
     """Fixture for a successful GET request."""
     with patch("httpx.Client.request", return_value=mock_success_get_pipeline):
         return Pipeline(pipeline_id="test-pipeline-id").get()
+
+
+@pytest.fixture
+def dlq_test():
+    """Fixture for a DLQ instance."""
+    return DLQ(host="http://localhost:8080", pipeline_id="test-pipeline")
+
+
+@pytest.fixture
+def pipeline_test():
+    """Fixture for a Pipeline instance."""
+    return Pipeline(host="http://localhost", pipeline_id="test-pipeline")

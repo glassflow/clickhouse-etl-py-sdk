@@ -6,6 +6,8 @@ from pydantic import ValidationError
 
 from . import errors, models
 from .api_client import APIClient
+from .dlq import DLQ
+from .tracking import Tracking
 
 
 class Pipeline(APIClient):
@@ -29,7 +31,7 @@ class Pipeline(APIClient):
             config: Pipeline configuration
         """
         super().__init__(host=host)
-
+        
         if not config and not pipeline_id:
             raise ValueError("Either config or pipeline_id must be provided")
         elif config and pipeline_id:
@@ -46,6 +48,8 @@ class Pipeline(APIClient):
             self.pipeline_id = self.config.pipeline_id
         else:
             self.config = None
+
+        self._dlq = DLQ(pipeline_id=pipeline_id, host=host)
 
     def get(self) -> Pipeline:
         """Fetch a pipeline by its ID.
@@ -130,11 +134,9 @@ class Pipeline(APIClient):
         if self.config is None:
             self.get()
         try:
-            # Use different endpoints based on whether pipeline_id is available
             endpoint = f"{self.ENDPOINT}/{self.pipeline_id}"
             self._request("DELETE", endpoint)
             self._track_event("PipelineDeleted")
-
         except errors.NotFoundError as e:
             self._track_event("PipelineDeleteError", error_type="PipelineNotFound")
             raise errors.PipelineNotFoundError(
@@ -181,6 +183,15 @@ class Pipeline(APIClient):
             by_alias=True,
             exclude_none=True,
         )
+
+    @property
+    def dlq(self) -> DLQ:
+        """Get the DLQ (Dead Letter Queue) client for this pipeline.
+
+        Returns:
+            DLQ: The DLQ client instance
+        """
+        return self._dlq
 
     def _tracking_info(self) -> dict[str, Any]:
         """Get information about the active pipeline."""
