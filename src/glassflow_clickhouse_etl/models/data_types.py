@@ -47,7 +47,7 @@ class ClickhouseDataType(CaseInsensitiveStrEnum):
     ARRAY_INT16 = "Array(Int16)"
     ARRAY_INT32 = "Array(Int32)"
     ARRAY_INT64 = "Array(Int64)"
-    
+
 
 kafka_to_clickhouse_data_type_mappings = {
     KafkaDataType.STRING: [
