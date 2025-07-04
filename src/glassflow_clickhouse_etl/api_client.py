@@ -68,6 +68,8 @@ class APIClient:
             raise errors.ForbiddenError(status_code, "Forbidden")
         elif status_code == 404:
             raise errors.NotFoundError(status_code, "Resource not found")
+        elif status_code == 422:
+            raise errors.UnprocessableContentError(status_code, "Unprocessable Content")
         elif status_code == 500:
             raise errors.ServerError(status_code, "Server error")
         else:

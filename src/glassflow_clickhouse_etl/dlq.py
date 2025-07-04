@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
-import httpx
-
+from . import errors
 from .api_client import APIClient
+from .errors import InvalidBatchSizeError
 
 
 class DLQ(APIClient):
@@ -12,7 +12,11 @@ class DLQ(APIClient):
     Dead Letter Queue client for managing failed messages.
     """
 
-    ENDPOINT = "/api/v1/dlq"
+    def __init__(self, pipeline_id: str, host: str | None = None):
+        super().__init__(host)
+        self.pipeline_id = pipeline_id
+        self.endpoint = f"/api/v1/pipeline/{pipeline_id}/dlq"
+        self._max_batch_size = 100
 
     def consume(self, batch_size: int = 100) -> List[Dict[str, Any]]:
         """
@@ -23,29 +27,24 @@ class DLQ(APIClient):
 
         Returns:
             List of messages from the DLQ
-
-        Raises:
-            ValueError: If batch_size is not within valid range
-            ConnectionError: If there is a network error
-            InternalServerError: If the API request fails
         """
-        if not isinstance(batch_size, int) or batch_size < 1 or batch_size > 1000:
-            raise ValueError("batch_size must be an integer between 1 and 1000")
+        if not isinstance(batch_size, int) or batch_size < 1 or batch_size > self._max_batch_size:
+            raise ValueError("batch_size must be an integer between 1 and 100")
 
         try:
-            response = self.client.get(
-                f"{self.ENDPOINT}/consume",
+            response = self._request(
+                "GET",
+                f"{self.endpoint}/consume",
                 params={"batch_size": batch_size}
             )
             response.raise_for_status()
             return response.json()
-        except httpx.HTTPStatusError as e:
-            error_mappings = {
-                422: (ValueError, "InvalidBatchSize"),
-            }
-            self._handle_http_error(e, error_mappings, "DLQConsumeError")
-        except httpx.RequestError as e:
-            self._handle_connection_error(e, "DLQ")
+        except errors.UnprocessableContentError as e:
+            raise InvalidBatchSizeError(
+                f"Invalid batch size: batch size should be larger than 1 "
+                f"and smaller than {self._max_batch_size}") from e
+        except errors.APIError as e:
+            raise e
 
     def state(self) -> Dict[str, Any]:
         """
@@ -59,10 +58,11 @@ class DLQ(APIClient):
             InternalServerError: If the API request fails
         """
         try:
-            response = self.client.get(f"{self.ENDPOINT}/state")
+            response = self._request(
+                "GET",
+                f"{self.endpoint}/state"
+            )
             response.raise_for_status()
             return response.json()
-        except httpx.HTTPStatusError as e:
-            self._handle_http_error(e, None, "DLQStateError")
-        except httpx.RequestError as e:
-            self._handle_connection_error(e, "DLQ")
+        except errors.APIError as e:
+            raise e

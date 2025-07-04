@@ -31,7 +31,6 @@ class Pipeline(APIClient):
             config: Pipeline configuration
         """
         super().__init__(host=host)
-        self._dlq = DLQ(url)
         
         if not config and not pipeline_id:
             raise ValueError("Either config or pipeline_id must be provided")
@@ -49,6 +48,8 @@ class Pipeline(APIClient):
             self.pipeline_id = self.config.pipeline_id
         else:
             self.config = None
+
+        self._dlq = DLQ(pipeline_id=pipeline_id, host=host)
 
     def get(self) -> Pipeline:
         """Fetch a pipeline by its ID.

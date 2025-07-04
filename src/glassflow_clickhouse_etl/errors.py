@@ -34,6 +34,10 @@ class ForbiddenError(APIError):
     """Raised on 403 Forbidden errors."""
 
 
+class UnprocessableContentError(APIError):
+    """Raised on 422 Unprocessable Content errors."""
+
+
 class ServerError(APIError):
     """Raised on 500 Server Error errors."""
 
@@ -52,3 +56,7 @@ class PipelineInvalidConfigurationError(APIError):
 
 class InvalidDataTypeMappingError(GlassFlowError):
     """Exception raised when a data type mapping is invalid."""
+
+
+class InvalidBatchSizeError(GlassFlowError):
+    """Exception raised when a batch size is invalid."""
