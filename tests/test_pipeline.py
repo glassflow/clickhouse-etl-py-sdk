@@ -110,6 +110,76 @@ def test_validate_config_invalid(invalid_pipeline_config):
     assert "pipeline_id cannot be empty" in str(exc_info.value)
 
 
+def test_pause_pipeline_success(valid_pipeline_config, mock_success_response):
+    """Test successful pipeline pause."""
+    config = PipelineConfig(**valid_pipeline_config)
+    pipeline = Pipeline(host="http://localhost:8080", config=config)
+
+    with patch(
+        "httpx.Client.request", return_value=mock_success_response
+    ) as mock_pause:
+        pipeline.pause()
+        mock_pause.assert_called_once_with(
+            "POST", f"{pipeline.ENDPOINT}/{config.pipeline_id}/pause"
+        )
+
+
+def test_pause_pipeline_not_found(valid_pipeline_config, mock_not_found_response):
+    """Test pipeline pause when no pipeline is active."""
+    config = PipelineConfig(**valid_pipeline_config)
+    pipeline = Pipeline(host="http://localhost:8080", config=config)
+
+    with patch("httpx.Client.request", return_value=mock_not_found_response):
+        with pytest.raises(errors.PipelineNotFoundError):
+            pipeline.pause()
+
+
+def test_pause_pipeline_connection_error(valid_pipeline_config, mock_connection_error):
+    """Test pipeline pause with connection error."""
+    config = PipelineConfig(**valid_pipeline_config)
+    pipeline = Pipeline(host="http://localhost:8080", config=config)
+
+    with patch("httpx.Client.request", side_effect=mock_connection_error):
+        with pytest.raises(errors.ConnectionError) as exc_info:
+            pipeline.pause()
+        assert "Failed to connect to GlassFlow ETL API" in str(exc_info.value)
+
+
+def test_resume_pipeline_success(valid_pipeline_config, mock_success_response):
+    """Test successful pipeline resume."""
+    config = PipelineConfig(**valid_pipeline_config)
+    pipeline = Pipeline(host="http://localhost:8080", config=config)
+
+    with patch(
+        "httpx.Client.request", return_value=mock_success_response
+    ) as mock_resume:
+        pipeline.resume()
+        mock_resume.assert_called_once_with(
+            "POST", f"{pipeline.ENDPOINT}/{config.pipeline_id}/resume"
+        )
+
+
+def test_resume_pipeline_not_found(valid_pipeline_config, mock_not_found_response):
+    """Test pipeline resume when no pipeline is active."""
+    config = PipelineConfig(**valid_pipeline_config)
+    pipeline = Pipeline(host="http://localhost:8080", config=config)
+
+    with patch("httpx.Client.request", return_value=mock_not_found_response):
+        with pytest.raises(errors.PipelineNotFoundError):
+            pipeline.resume()
+
+
+def test_resume_pipeline_connection_error(valid_pipeline_config, mock_connection_error):
+    """Test pipeline resume with connection error."""
+    config = PipelineConfig(**valid_pipeline_config)
+    pipeline = Pipeline(host="http://localhost:8080", config=config)
+
+    with patch("httpx.Client.request", side_effect=mock_connection_error):
+        with pytest.raises(errors.ConnectionError) as exc_info:
+            pipeline.resume()
+        assert "Failed to connect to GlassFlow ETL API" in str(exc_info.value)
+
+
 def test_tracking_info(
     valid_pipeline_config,
     valid_pipeline_config_with_dedup_disabled,

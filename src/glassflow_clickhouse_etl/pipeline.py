@@ -7,7 +7,6 @@ from pydantic import ValidationError
 from . import errors, models
 from .api_client import APIClient
 from .dlq import DLQ
-from .tracking import Tracking
 
 
 class Pipeline(APIClient):
@@ -31,7 +30,7 @@ class Pipeline(APIClient):
             config: Pipeline configuration
         """
         super().__init__(host=host)
-        
+
         if not config and not pipeline_id:
             raise ValueError("Either config or pipeline_id must be provided")
         elif config and pipeline_id:
@@ -146,6 +145,69 @@ class Pipeline(APIClient):
             self._track_event("PipelineDeleteError", error_type="InternalServerError")
             raise e
 
+    def pause(self) -> Pipeline:
+        """Pauses the pipeline with the given ID.
+
+        Returns:
+            Pipeline: A Pipeline instance for the paused pipeline
+
+        Raises:
+            PipelineNotFoundError: If pipeline is not found
+            APIError: If the API request fails
+        """
+        try:
+            endpoint = f"{self.ENDPOINT}/{self.pipeline_id}/pause"
+            self._request("POST", endpoint)
+            self._track_event("PipelinePaused")
+            return self
+        except errors.NotFoundError as e:
+            self._track_event("PipelinePauseError", error_type="PipelineNotFound")
+            raise errors.PipelineNotFoundError(
+                f"Pipeline with id '{self.pipeline_id}' not found"
+            ) from e
+        except errors.APIError as e:
+            self._track_event("PipelinePauseError", error_type="InternalServerError")
+            raise e
+
+    def resume(self) -> Pipeline:
+        """Resumes the pipeline with the given ID.
+
+        Returns:
+            Pipeline: A Pipeline instance for the resumed pipeline
+
+        Raises:
+            PipelineNotFoundError: If pipeline is not found
+            APIError: If the API request fails
+        """
+        try:
+            endpoint = f"{self.ENDPOINT}/{self.pipeline_id}/resume"
+            self._request("POST", endpoint)
+            self._track_event("PipelineResumed")
+            return self
+        except errors.NotFoundError as e:
+            self._track_event("PipelineResumeError", error_type="PipelineNotFound")
+            raise errors.PipelineNotFoundError(
+                f"Pipeline with id '{self.pipeline_id}' not found"
+            ) from e
+        except errors.APIError as e:
+            self._track_event("PipelineResumeError", error_type="InternalServerError")
+            raise e
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert the pipeline configuration to a dictionary.
+
+        Returns:
+            dict: Pipeline configuration as a dictionary
+        """
+        if not hasattr(self, "config") or self.config is None:
+            return {"pipeline_id": self.pipeline_id}
+
+        return self.config.model_dump(
+            mode="json",
+            by_alias=True,
+            exclude_none=True,
+        )
+
     @staticmethod
     def validate_config(config: dict[str, Any]) -> bool:
         """
@@ -168,21 +230,6 @@ class Pipeline(APIClient):
             raise e
         except ValueError as e:
             raise e
-
-    def to_dict(self) -> dict[str, Any]:
-        """Convert the pipeline configuration to a dictionary.
-
-        Returns:
-            dict: Pipeline configuration as a dictionary
-        """
-        if not hasattr(self, "config") or self.config is None:
-            return {}
-
-        return self.config.model_dump(
-            mode="json",
-            by_alias=True,
-            exclude_none=True,
-        )
 
     @property
     def dlq(self) -> DLQ:
