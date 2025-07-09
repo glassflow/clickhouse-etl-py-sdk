@@ -243,53 +243,33 @@ class Pipeline(APIClient):
     def _tracking_info(self) -> dict[str, Any]:
         """Get information about the active pipeline."""
         # If config is not set, return minimal info
-        if not hasattr(self, "config") or self.config is None:
+        if self.config is None:
             return {
-                "pipeline_id": getattr(self, "pipeline_id", "unknown"),
+                "pipeline_id": self.pipeline_id
             }
 
         # Extract join info
-        if hasattr(self.config, "join") and self.config.join is not None:
-            join_enabled = self.config.join.enabled
-        else:
-            join_enabled = False
+        join_enabled = self.config.join.enabled
 
         # Extract deduplication info
         deduplication_enabled = False
-        if hasattr(self.config, "source") and hasattr(self.config.source, "topics"):
-            for topic in self.config.source.topics:
-                if hasattr(topic, "deduplication") and topic.deduplication is not None:
-                    deduplication_enabled = topic.deduplication.enabled
-                    break
+        for topic in self.config.source.topics:
+            if topic.deduplication is not None and topic.deduplication.enabled:
+                deduplication_enabled = topic.deduplication.enabled
+                break
 
         # Extract connection params
-        if hasattr(self.config, "source") and hasattr(
-            self.config.source, "connection_params"
-        ):
-            conn_params = self.config.source.connection_params
-
-            if hasattr(conn_params, "root_ca") and conn_params.root_ca is not None:
-                root_ca_provided = True
-            else:
-                root_ca_provided = False
-
-            if hasattr(conn_params, "skip_auth") and conn_params.skip_auth is not None:
-                skip_auth = conn_params.skip_auth
-            else:
-                skip_auth = False
-
-            protocol = getattr(conn_params, "protocol", "unknown")
-            mechanism = getattr(conn_params, "mechanism", "unknown")
+        conn_params = self.config.source.connection_params
+        if conn_params.root_ca is not None:
+            root_ca_provided = True
         else:
             root_ca_provided = False
-            skip_auth = False
-            protocol = "unknown"
-            mechanism = "unknown"
 
-        # Get pipeline_id from config or instance variable
-        pipeline_id = getattr(
-            self.config, "pipeline_id", getattr(self, "pipeline_id", "unknown")
-        )
+        skip_auth = conn_params.skip_auth
+
+        protocol = str(conn_params.protocol)
+        mechanism = str(conn_params.mechanism)
+        pipeline_id = self.config.pipeline_id
 
         return {
             "pipeline_id": pipeline_id,
