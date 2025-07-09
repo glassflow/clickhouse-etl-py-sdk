@@ -2,11 +2,10 @@
 GlassFlow SDK for creating data pipelines between Kafka and ClickHouse.
 """
 
-
 from .client import Client
+from .dlq import DLQ
 from .models import JoinConfig, PipelineConfig, SinkConfig, SourceConfig
 from .pipeline import Pipeline
-from .dlq import DLQ
 
 __all__ = [
     "Pipeline",

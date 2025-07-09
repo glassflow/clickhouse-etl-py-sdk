@@ -271,7 +271,10 @@ class TestModels:
                 schema=models.Schema(
                     type=models.SchemaType.JSON,
                     fields=[
-                        models.SchemaField(name="name", type=models.KafkaDataType.STRING),
+                        models.SchemaField(
+                            name="name",
+                            type=models.KafkaDataType.STRING,
+                        ),
                     ],
                 ),
                 deduplication=models.DeduplicationConfig(
@@ -322,7 +325,9 @@ class TestModels:
         )
         assert config.deduplication.enabled is False
 
-    def test_validate_data_type_compatibility_invalid_mapping(self, valid_pipeline_config):
+    def test_validate_data_type_compatibility_invalid_mapping(
+        self, valid_pipeline_config
+    ):
         """Test data type compatibility validation with invalid type mappings."""
         # Modify the sink configuration to have an invalid type mapping
         valid_pipeline_config["sink"]["table_mapping"][0]["column_type"] = (

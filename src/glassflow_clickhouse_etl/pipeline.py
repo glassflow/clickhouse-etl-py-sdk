@@ -244,12 +244,10 @@ class Pipeline(APIClient):
         """Get information about the active pipeline."""
         # If config is not set, return minimal info
         if self.config is None:
-            return {
-                "pipeline_id": self.pipeline_id
-            }
+            return {"pipeline_id": self.pipeline_id}
 
         # Extract join info
-        join_enabled = getattr(self.config.join, 'enabled', False)
+        join_enabled = getattr(self.config.join, "enabled", False)
 
         # Extract deduplication info
         deduplication_enabled = any(

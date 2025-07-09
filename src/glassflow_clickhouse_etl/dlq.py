@@ -28,21 +28,24 @@ class DLQ(APIClient):
         Returns:
             List of messages from the DLQ
         """
-        if not isinstance(batch_size, int) or batch_size < 1 or batch_size > self._max_batch_size:
+        if (
+            not isinstance(batch_size, int)
+            or batch_size < 1
+            or batch_size > self._max_batch_size
+        ):
             raise ValueError("batch_size must be an integer between 1 and 100")
 
         try:
             response = self._request(
-                "GET",
-                f"{self.endpoint}/consume",
-                params={"batch_size": batch_size}
+                "GET", f"{self.endpoint}/consume", params={"batch_size": batch_size}
             )
             response.raise_for_status()
             return response.json()
         except errors.UnprocessableContentError as e:
             raise InvalidBatchSizeError(
                 f"Invalid batch size: batch size should be larger than 1 "
-                f"and smaller than {self._max_batch_size}") from e
+                f"and smaller than {self._max_batch_size}"
+            ) from e
         except errors.APIError as e:
             raise e
 
@@ -58,10 +61,7 @@ class DLQ(APIClient):
             InternalServerError: If the API request fails
         """
         try:
-            response = self._request(
-                "GET",
-                f"{self.endpoint}/state"
-            )
+            response = self._request("GET", f"{self.endpoint}/state")
             response.raise_for_status()
             return response.json()
         except errors.APIError as e:

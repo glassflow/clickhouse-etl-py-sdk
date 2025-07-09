@@ -4,8 +4,8 @@ from unittest.mock import MagicMock, patch
 import httpx
 import pytest
 
-from glassflow_clickhouse_etl.pipeline import Pipeline
 from glassflow_clickhouse_etl.dlq import DLQ
+from glassflow_clickhouse_etl.pipeline import Pipeline
 
 
 @pytest.fixture

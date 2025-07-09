@@ -22,20 +22,18 @@ class TestDLQ:
         mock_response.status_code = 200
         mock_response.json.return_value = [
             {"id": "msg1", "content": "test message 1"},
-            {"id": "msg2", "content": "test message 2"}
+            {"id": "msg2", "content": "test message 2"},
         ]
 
         with patch("httpx.Client.request", return_value=mock_response) as mock_get:
             result = dlq_test.consume(batch_size=50)
 
             mock_get.assert_called_once_with(
-                "GET",
-                f"{dlq_test.endpoint}/consume",
-                params={"batch_size": 50}
+                "GET", f"{dlq_test.endpoint}/consume", params={"batch_size": 50}
             )
             assert result == [
                 {"id": "msg1", "content": "test message 1"},
-                {"id": "msg2", "content": "test message 2"}
+                {"id": "msg2", "content": "test message 2"},
             ]
 
     def test_consume_default_batch_size(self, dlq_test):
@@ -48,9 +46,7 @@ class TestDLQ:
             result = dlq_test.consume()
 
             mock_get.assert_called_once_with(
-                "GET",
-                f"{dlq_test.endpoint}/consume",
-                params={"batch_size": 100}
+                "GET", f"{dlq_test.endpoint}/consume", params={"batch_size": 100}
             )
             assert result == []
 
@@ -89,9 +85,7 @@ class TestDLQ:
         mock_response.text = "Invalid batch size"
 
         mock_error = httpx.HTTPStatusError(
-            "422 Unprocessable Entity",
-            request=Mock(),
-            response=mock_response
+            "422 Unprocessable Entity", request=Mock(), response=mock_response
         )
 
         with patch("httpx.Client.request", side_effect=mock_error):
@@ -107,9 +101,7 @@ class TestDLQ:
         mock_response.text = "Internal server error"
 
         mock_error = httpx.HTTPStatusError(
-            "500 Internal Server Error",
-            request=Mock(),
-            response=mock_response
+            "500 Internal Server Error", request=Mock(), response=mock_response
         )
 
         with patch("httpx.Client.request", side_effect=mock_error):
@@ -135,20 +127,17 @@ class TestDLQ:
         mock_response.json.return_value = {
             "total_messages": 42,
             "pending_messages": 5,
-            "last_updated": "2023-01-01T00:00:00Z"
+            "last_updated": "2023-01-01T00:00:00Z",
         }
 
         with patch("httpx.Client.request", return_value=mock_response) as mock_get:
             result = dlq_test.state()
 
-            mock_get.assert_called_once_with(
-                "GET",
-                f"{dlq_test.endpoint}/state"
-            )
+            mock_get.assert_called_once_with("GET", f"{dlq_test.endpoint}/state")
             assert result == {
                 "total_messages": 42,
                 "pending_messages": 5,
-                "last_updated": "2023-01-01T00:00:00Z"
+                "last_updated": "2023-01-01T00:00:00Z",
             }
 
     def test_state_server_error(self, dlq_test):
@@ -158,9 +147,7 @@ class TestDLQ:
         mock_response.text = "Internal server error"
 
         mock_error = httpx.HTTPStatusError(
-            "500 Internal Server Error",
-            request=Mock(),
-            response=mock_response
+            "500 Internal Server Error", request=Mock(), response=mock_response
         )
 
         with patch("httpx.Client.request", side_effect=mock_error):

@@ -17,7 +17,9 @@ class TestClient:
         assert client.host == "https://example.com"
         assert client.http_client.base_url == "https://example.com"
 
-    def test_client_get_pipeline_success(self, valid_pipeline_config, mock_success_response):
+    def test_client_get_pipeline_success(
+        self, valid_pipeline_config, mock_success_response
+    ):
         """Test successful pipeline retrieval by ID."""
         client = Client()
         pipeline_id = "test-pipeline-id"
@@ -28,7 +30,9 @@ class TestClient:
             "httpx.Client.request", return_value=mock_success_response
         ) as mock_request:
             pipeline = client.get_pipeline(pipeline_id)
-            mock_request.assert_called_once_with("GET", f"{client.ENDPOINT}/{pipeline_id}")
+            mock_request.assert_called_once_with(
+                "GET", f"{client.ENDPOINT}/{pipeline_id}"
+            )
             assert isinstance(pipeline, Pipeline)
             assert pipeline.pipeline_id == pipeline_id
 
@@ -84,7 +88,9 @@ class TestClient:
             mock_request.assert_called_once_with("GET", client.ENDPOINT)
             assert pipeline_ids == []
 
-    def test_client_create_pipeline_success(self, valid_pipeline_config, mock_success_response):
+    def test_client_create_pipeline_success(
+        self, valid_pipeline_config, mock_success_response
+    ):
         """Test successful pipeline creation."""
         client = Client()
 
