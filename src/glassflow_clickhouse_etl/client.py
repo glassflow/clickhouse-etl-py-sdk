@@ -76,7 +76,7 @@ class Client(APIClient):
             return []
         except errors.APIError as e:
             self._track_event("PipelineListError", error_type="InternalServerError")
-            raise errors.APIError(f"Failed to list pipelines: {e.response.text}") from e
+            raise e
 
     def create_pipeline(self, pipeline_config: dict[str, Any] | models.PipelineConfig):
         """Creates a new pipeline with the given config.

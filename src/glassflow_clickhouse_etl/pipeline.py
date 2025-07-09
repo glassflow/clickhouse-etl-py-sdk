@@ -109,15 +109,14 @@ class Pipeline(APIClient):
                 "delete it first before creating new pipeline or use a"
                 "different pipeline ID"
             ) from e
+        except errors.UnprocessableContentError as e:
+            self._track_event(
+                "PipelineCreateError", error_type="InvalidPipelineConfig"
+            )
+            raise errors.PipelineInvalidConfigurationError(
+                f"Invalid pipeline configuration: {e.response}"
+            ) from e
         except errors.APIError as e:
-            if e.status_code == 422:
-                self._track_event(
-                    "PipelineCreateError", error_type="InvalidPipelineConfig"
-                )
-                raise errors.PipelineInvalidConfigurationError(
-                    f"Invalid pipeline configuration: {e.response.text}"
-                ) from e
-            else:
                 self._track_event(
                     "PipelineCreateError", error_type="InternalServerError"
                 )

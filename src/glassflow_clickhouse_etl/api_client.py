@@ -73,7 +73,12 @@ class APIClient:
         elif status_code == 500:
             raise errors.ServerError(status_code, "Server error")
         else:
-            raise errors.APIError(status_code, "An error occurred")
+            raise errors.APIError(
+                status_code,
+                message=f"An error occurred: ({status_code} {response.reason_phrase}) "
+                f"{response.text}",
+                response=response,
+            )
 
     def _track_event(self, event_name: str, **kwargs: Any) -> None:
         """Track an event with the given name and properties."""
