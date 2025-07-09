@@ -249,33 +249,24 @@ class Pipeline(APIClient):
             }
 
         # Extract join info
-        if self.config.join is not None:
-            join_enabled = self.config.join.enabled
-        else:
-            join_enabled = False
+        join_enabled = getattr(self.config.join, 'enabled', False)
 
         # Extract deduplication info
-        deduplication_enabled = False
-        for topic in self.config.source.topics:
-            if topic.deduplication is not None and topic.deduplication.enabled:
-                deduplication_enabled = topic.deduplication.enabled
-                break
+        deduplication_enabled = any(
+            t.deduplication and t.deduplication.enabled
+            for t in self.config.source.topics
+        )
 
         # Extract connection params
         conn_params = self.config.source.connection_params
-        if conn_params.root_ca is not None:
-            root_ca_provided = True
-        else:
-            root_ca_provided = False
 
+        root_ca_provided = conn_params.root_ca is not None
         skip_auth = conn_params.skip_auth
-
         protocol = str(conn_params.protocol)
         mechanism = str(conn_params.mechanism)
-        pipeline_id = self.config.pipeline_id
 
         return {
-            "pipeline_id": pipeline_id,
+            "pipeline_id": self.config.pipeline_id,
             "join_enabled": join_enabled,
             "deduplication_enabled": deduplication_enabled,
             "source_auth_method": mechanism,
