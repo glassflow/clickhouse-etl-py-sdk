@@ -16,7 +16,7 @@ class AnalyticsSettings(BaseModel):
 
 
 class GlassFlowConfig(BaseModel):
-    config_file: Path = Path("~/.glassflow/clickhouse.conf")
+    config_file: Path = Path.home() / ".glassflow" / "clickhouse.conf"
     glassflow: GlassFlowSettings = GlassFlowSettings()
     analytics: AnalyticsSettings = AnalyticsSettings()
 
@@ -29,8 +29,10 @@ class GlassFlowConfig(BaseModel):
         if os.path.exists(self.config_file):
             with open(self.config_file, "r") as f:
                 config.read_file(f)
-            self.glassflow = GlassFlowSettings(**config["glassflow"])
-            self.analytics = AnalyticsSettings(**config["analytics"])
+            if "glassflow" in config:
+                self.glassflow = GlassFlowSettings(**config["glassflow"])
+            if "analytics" in config:
+                self.analytics = AnalyticsSettings(**config["analytics"])
         else:
             self.write()
 
