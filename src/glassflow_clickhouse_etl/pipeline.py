@@ -249,7 +249,10 @@ class Pipeline(APIClient):
             }
 
         # Extract join info
-        join_enabled = self.config.join.enabled
+        if self.config.join is not None:
+            join_enabled = self.config.join.enabled
+        else:
+            join_enabled = False
 
         # Extract deduplication info
         deduplication_enabled = False
