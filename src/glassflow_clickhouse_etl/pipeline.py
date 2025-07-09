@@ -7,7 +7,6 @@ from pydantic import ValidationError
 from . import errors, models
 from .api_client import APIClient
 from .dlq import DLQ
-from .tracking import Tracking
 
 
 class Pipeline(APIClient):
@@ -31,7 +30,7 @@ class Pipeline(APIClient):
             config: Pipeline configuration
         """
         super().__init__(host=host)
-        
+
         if not config and not pipeline_id:
             raise ValueError("Either config or pipeline_id must be provided")
         elif config and pipeline_id:
@@ -146,6 +145,69 @@ class Pipeline(APIClient):
             self._track_event("PipelineDeleteError", error_type="InternalServerError")
             raise e
 
+    def pause(self) -> Pipeline:
+        """Pauses the pipeline with the given ID.
+
+        Returns:
+            Pipeline: A Pipeline instance for the paused pipeline
+
+        Raises:
+            PipelineNotFoundError: If pipeline is not found
+            APIError: If the API request fails
+        """
+        try:
+            endpoint = f"{self.ENDPOINT}/{self.pipeline_id}/pause"
+            self._request("POST", endpoint)
+            self._track_event("PipelinePaused")
+            return self
+        except errors.NotFoundError as e:
+            self._track_event("PipelinePauseError", error_type="PipelineNotFound")
+            raise errors.PipelineNotFoundError(
+                f"Pipeline with id '{self.pipeline_id}' not found"
+            ) from e
+        except errors.APIError as e:
+            self._track_event("PipelinePauseError", error_type="InternalServerError")
+            raise e
+
+    def resume(self) -> Pipeline:
+        """Resumes the pipeline with the given ID.
+
+        Returns:
+            Pipeline: A Pipeline instance for the resumed pipeline
+
+        Raises:
+            PipelineNotFoundError: If pipeline is not found
+            APIError: If the API request fails
+        """
+        try:
+            endpoint = f"{self.ENDPOINT}/{self.pipeline_id}/resume"
+            self._request("POST", endpoint)
+            self._track_event("PipelineResumed")
+            return self
+        except errors.NotFoundError as e:
+            self._track_event("PipelineResumeError", error_type="PipelineNotFound")
+            raise errors.PipelineNotFoundError(
+                f"Pipeline with id '{self.pipeline_id}' not found"
+            ) from e
+        except errors.APIError as e:
+            self._track_event("PipelineResumeError", error_type="InternalServerError")
+            raise e
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert the pipeline configuration to a dictionary.
+
+        Returns:
+            dict: Pipeline configuration as a dictionary
+        """
+        if not hasattr(self, "config") or self.config is None:
+            return {"pipeline_id": self.pipeline_id}
+
+        return self.config.model_dump(
+            mode="json",
+            by_alias=True,
+            exclude_none=True,
+        )
+
     @staticmethod
     def validate_config(config: dict[str, Any]) -> bool:
         """
@@ -169,21 +231,6 @@ class Pipeline(APIClient):
         except ValueError as e:
             raise e
 
-    def to_dict(self) -> dict[str, Any]:
-        """Convert the pipeline configuration to a dictionary.
-
-        Returns:
-            dict: Pipeline configuration as a dictionary
-        """
-        if not hasattr(self, "config") or self.config is None:
-            return {}
-
-        return self.config.model_dump(
-            mode="json",
-            by_alias=True,
-            exclude_none=True,
-        )
-
     @property
     def dlq(self) -> DLQ:
         """Get the DLQ (Dead Letter Queue) client for this pipeline.
@@ -196,56 +243,30 @@ class Pipeline(APIClient):
     def _tracking_info(self) -> dict[str, Any]:
         """Get information about the active pipeline."""
         # If config is not set, return minimal info
-        if not hasattr(self, "config") or self.config is None:
+        if self.config is None:
             return {
-                "pipeline_id": getattr(self, "pipeline_id", "unknown"),
+                "pipeline_id": self.pipeline_id
             }
 
         # Extract join info
-        if hasattr(self.config, "join") and self.config.join is not None:
-            join_enabled = self.config.join.enabled
-        else:
-            join_enabled = False
+        join_enabled = getattr(self.config.join, 'enabled', False)
 
         # Extract deduplication info
-        deduplication_enabled = False
-        if hasattr(self.config, "source") and hasattr(self.config.source, "topics"):
-            for topic in self.config.source.topics:
-                if hasattr(topic, "deduplication") and topic.deduplication is not None:
-                    deduplication_enabled = topic.deduplication.enabled
-                    break
-
-        # Extract connection params
-        if hasattr(self.config, "source") and hasattr(
-            self.config.source, "connection_params"
-        ):
-            conn_params = self.config.source.connection_params
-
-            if hasattr(conn_params, "root_ca") and conn_params.root_ca is not None:
-                root_ca_provided = True
-            else:
-                root_ca_provided = False
-
-            if hasattr(conn_params, "skip_auth") and conn_params.skip_auth is not None:
-                skip_auth = conn_params.skip_auth
-            else:
-                skip_auth = False
-
-            protocol = getattr(conn_params, "protocol", "unknown")
-            mechanism = getattr(conn_params, "mechanism", "unknown")
-        else:
-            root_ca_provided = False
-            skip_auth = False
-            protocol = "unknown"
-            mechanism = "unknown"
-
-        # Get pipeline_id from config or instance variable
-        pipeline_id = getattr(
-            self.config, "pipeline_id", getattr(self, "pipeline_id", "unknown")
+        deduplication_enabled = any(
+            t.deduplication and t.deduplication.enabled
+            for t in self.config.source.topics
         )
 
+        # Extract connection params
+        conn_params = self.config.source.connection_params
+
+        root_ca_provided = conn_params.root_ca is not None
+        skip_auth = conn_params.skip_auth
+        protocol = str(conn_params.protocol)
+        mechanism = str(conn_params.mechanism)
+
         return {
-            "pipeline_id": pipeline_id,
+            "pipeline_id": self.config.pipeline_id,
             "join_enabled": join_enabled,
             "deduplication_enabled": deduplication_enabled,
             "source_auth_method": mechanism,
