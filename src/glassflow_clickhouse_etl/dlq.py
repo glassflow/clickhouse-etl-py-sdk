@@ -15,7 +15,7 @@ class DLQ(APIClient):
     def __init__(self, pipeline_id: str, host: str | None = None):
         super().__init__(host)
         self.pipeline_id = pipeline_id
-        self.endpoint = f"/api/v1/pipeline/{pipeline_id}/dlq"
+        self.endpoint = f"/api/v1/pipeline/{self.pipeline_id}/dlq"
         self._max_batch_size = 100
 
     def consume(self, batch_size: int = 100) -> List[Dict[str, Any]]:
@@ -64,5 +64,11 @@ class DLQ(APIClient):
             response = self._request("GET", f"{self.endpoint}/state")
             response.raise_for_status()
             return response.json()
+        except errors.NotFoundError as e:
+            raise errors.PipelineNotFoundError(
+                status_code=e.status_code,
+                message=f"Pipeline with id '{self.pipeline_id}' not found",
+                response=e.response,
+            ) from e
         except errors.APIError as e:
             raise e
