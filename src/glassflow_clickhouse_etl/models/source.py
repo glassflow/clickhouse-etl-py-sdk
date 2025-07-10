@@ -1,6 +1,6 @@
 from typing import Any, List, Optional
 
-from pydantic import BaseModel, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator, model_validator
 
 from .base import CaseInsensitiveStrEnum
 from .data_types import KafkaDataType
@@ -123,6 +123,12 @@ class KafkaConnectionParams(BaseModel):
     password: Optional[str] = Field(default=None)
     root_ca: Optional[str] = Field(default=None)
     skip_auth: bool = Field(default=False)
+
+    @model_validator(mode="before")
+    def empty_str_to_none(values):
+        if values.get("mechanism", None) == "":
+            values["mechanism"] = None
+        return values
 
 
 class SourceType(CaseInsensitiveStrEnum):
