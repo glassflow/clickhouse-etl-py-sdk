@@ -18,7 +18,7 @@ class APIError(GlassFlowError):
     def __init__(self, status_code, message=None, response=None):
         self.status_code = status_code
         self.response = response
-        self.message = message or f"API returned status code {status_code}"
+        self.message = message
         super().__init__(self.message)
 
 

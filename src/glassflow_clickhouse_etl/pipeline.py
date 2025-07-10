@@ -48,7 +48,7 @@ class Pipeline(APIClient):
         else:
             self.config = None
 
-        self._dlq = DLQ(pipeline_id=pipeline_id, host=host)
+        self._dlq = DLQ(pipeline_id=self.pipeline_id, host=host)
 
     def get(self) -> Pipeline:
         """Fetch a pipeline by its ID.
@@ -65,11 +65,14 @@ class Pipeline(APIClient):
             pipeline_data = response.json()
 
             self.config = models.PipelineConfig.model_validate(pipeline_data)
+            self._dlq = DLQ(pipeline_id=self.pipeline_id, host=self.host)
             return self
         except errors.NotFoundError as e:
             self._track_event("PipelineGetError", error_type="PipelineNotFound")
             raise errors.PipelineNotFoundError(
-                f"Pipeline with id '{self.pipeline_id}' not found"
+                status_code=e.status_code,
+                message=f"Pipeline with id '{self.pipeline_id}' not found",
+                response=e.response,
             ) from e
         except errors.APIError as e:
             self._track_event("PipelineGetError", error_type="InternalServerError")
@@ -105,16 +108,19 @@ class Pipeline(APIClient):
         except errors.ForbiddenError as e:
             self._track_event("PipelineCreateError", error_type="PipelineAlreadyExists")
             raise errors.PipelineAlreadyExistsError(
-                f"Pipeline with ID {self.config.pipeline_id} already exists;"
+                status_code=e.status_code,
+                message=f"Pipeline with ID {self.config.pipeline_id} already exists;"
                 "delete it first before creating new pipeline or use a"
-                "different pipeline ID"
+                "different pipeline ID",
+                response=e.response,
             ) from e
         except errors.UnprocessableContentError as e:
             self._track_event(
                 "PipelineCreateError", error_type="InvalidPipelineConfig"
             )
             raise errors.PipelineInvalidConfigurationError(
-                f"Invalid pipeline configuration: {e.response}"
+                status_code=e.status_code,
+                message=e.message or "Invalid pipeline configuration",
             ) from e
         except errors.APIError as e:
                 self._track_event(
@@ -138,7 +144,9 @@ class Pipeline(APIClient):
         except errors.NotFoundError as e:
             self._track_event("PipelineDeleteError", error_type="PipelineNotFound")
             raise errors.PipelineNotFoundError(
-                f"Pipeline with id '{self.pipeline_id}' not found"
+                status_code=e.status_code,
+                message=f"Pipeline with id '{self.pipeline_id}' not found",
+                response=e.response,
             ) from e
         except errors.APIError as e:
             self._track_event("PipelineDeleteError", error_type="InternalServerError")
@@ -162,7 +170,9 @@ class Pipeline(APIClient):
         except errors.NotFoundError as e:
             self._track_event("PipelinePauseError", error_type="PipelineNotFound")
             raise errors.PipelineNotFoundError(
-                f"Pipeline with id '{self.pipeline_id}' not found"
+                status_code=e.status_code,
+                message=f"Pipeline with id '{self.pipeline_id}' not found",
+                response=e.response,
             ) from e
         except errors.APIError as e:
             self._track_event("PipelinePauseError", error_type="InternalServerError")
@@ -186,7 +196,9 @@ class Pipeline(APIClient):
         except errors.NotFoundError as e:
             self._track_event("PipelineResumeError", error_type="PipelineNotFound")
             raise errors.PipelineNotFoundError(
-                f"Pipeline with id '{self.pipeline_id}' not found"
+                status_code=e.status_code,
+                message=f"Pipeline with id '{self.pipeline_id}' not found",
+                response=e.response,
             ) from e
         except errors.APIError as e:
             self._track_event("PipelineResumeError", error_type="InternalServerError")
@@ -238,6 +250,10 @@ class Pipeline(APIClient):
             DLQ: The DLQ client instance
         """
         return self._dlq
+
+    @dlq.setter
+    def dlq(self, dlq: DLQ) -> None:
+        self._dlq = dlq
 
     def _tracking_info(self) -> dict[str, Any]:
         """Get information about the active pipeline."""

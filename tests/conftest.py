@@ -360,6 +360,7 @@ def mock_not_found_response():
     mock_response = MagicMock(spec=httpx.Response)
     mock_response.status_code = 404
     mock_response.text = "No active pipeline"
+    mock_response.json.return_value = {"message": "not found"}
     mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
         "Not Found", request=MagicMock(), response=mock_response
     )
@@ -386,6 +387,7 @@ def mock_bad_request_response():
     mock_response = MagicMock(spec=httpx.Response)
     mock_response.status_code = 400
     mock_response.text = "Bad request"
+    mock_response.json.return_value = {"message": "Bad request"}
     mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
         "Bad Request", request=MagicMock(), response=mock_response
     )
