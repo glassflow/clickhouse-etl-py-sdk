@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import httpx
@@ -62,21 +63,35 @@ class APIClient:
     def _raise_api_error(response: httpx.Response) -> None:
         """Raise an APIError based on the response."""
         status_code = response.status_code
+        try:
+            message = response.json().get("message", None)
+        except json.JSONDecodeError:
+            message = f"{status_code} {response.reason_phrase}"
         if status_code == 400:
-            raise errors.ValidationError(status_code, "Bad request")
+            raise errors.ValidationError(
+                status_code, message, response=response
+            )
         elif status_code == 403:
-            raise errors.ForbiddenError(status_code, "Forbidden")
+            raise errors.ForbiddenError(
+                status_code, message, response=response
+            )
         elif status_code == 404:
-            raise errors.NotFoundError(status_code, "Resource not found")
+            raise errors.NotFoundError(
+                status_code, message, response=response
+            )
         elif status_code == 422:
-            raise errors.UnprocessableContentError(status_code, "Unprocessable Content")
+            raise errors.UnprocessableContentError(
+                status_code, message, response=response
+            )
         elif status_code == 500:
-            raise errors.ServerError(status_code, "Server error")
+            raise errors.ServerError(
+                status_code, message, response=response
+            )
         else:
             raise errors.APIError(
                 status_code,
-                message=f"An error occurred: ({status_code} {response.reason_phrase}) "
-                f"{response.text}",
+                message="An error occurred: "
+                f"({status_code} {response.reason_phrase}) {message}",
                 response=response,
             )
 
