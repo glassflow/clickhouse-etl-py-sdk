@@ -140,3 +140,33 @@ class SourceConfig(BaseModel):
     provider: Optional[str] = Field(default=None)
     connection_params: KafkaConnectionParams
     topics: List[TopicConfig]
+
+
+class DeduplicationConfigPatch(BaseModel):
+    enabled: Optional[bool] = Field(default=None)
+    id_field: Optional[str] = Field(default=None)
+    id_field_type: Optional[KafkaDataType] = Field(default=None)
+    time_window: Optional[str] = Field(default=None)
+
+
+class TopicConfigPatch(BaseModel):
+    consumer_group_initial_offset: Optional[ConsumerGroupOffset] = Field(default=None)
+    name: Optional[str] = Field(default=None)
+    event_schema: Optional[Schema] = Field(default=None)
+    deduplication: Optional[DeduplicationConfigPatch] = Field(default=None)
+
+
+class KafkaConnectionParamsPatch(BaseModel):
+    brokers: Optional[List[str]] = Field(default=None)
+    protocol: Optional[KafkaProtocol] = Field(default=None)
+    mechanism: Optional[KafkaMechanism] = Field(default=None)
+    username: Optional[str] = Field(default=None)
+    password: Optional[str] = Field(default=None)
+    root_ca: Optional[str] = Field(default=None)
+    skip_auth: Optional[bool] = Field(default=None)
+
+
+class SourceConfigPatch(BaseModel):
+    provider: Optional[str] = Field(default=None)
+    connection_params: Optional[KafkaConnectionParamsPatch] = Field(default=None)
+    topics: Optional[List[TopicConfigPatch]] = Field(default=None)

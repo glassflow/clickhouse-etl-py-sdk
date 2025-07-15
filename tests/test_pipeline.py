@@ -255,3 +255,55 @@ class TestPipeline:
             "source_root_ca_provided": True,
             "source_skip_auth": False,
         }
+
+    def test_update_pipeline_success(self, valid_pipeline_config, mock_success_response):
+        """Test successful pipeline update."""
+        from glassflow_clickhouse_etl.models import PipelineConfigPatch
+        config = PipelineConfig(**valid_pipeline_config)
+        pipeline = Pipeline(host="http://localhost:8080", config=config)
+        patch_data = {"sink": valid_pipeline_config["sink"]}
+        updated_config = valid_pipeline_config.copy()
+        updated_config["sink"]["table"] = "updated_table"
+        mock_success_response.json.return_value = updated_config
+
+        with patch("httpx.Client.request", return_value=mock_success_response) as mock_patch:
+            pipeline.update(patch_data, validate=False)
+            mock_patch.assert_called_once_with(
+                "PATCH",
+                f"{pipeline.ENDPOINT}/{config.pipeline_id}",
+                json=PipelineConfigPatch(**patch_data).model_dump(mode="json", by_alias=True, exclude_none=True),
+            )
+            assert pipeline.config.sink.table == "updated_table"
+
+    def test_update_pipeline_not_found(self, valid_pipeline_config, mock_not_found_response):
+        """Test pipeline update when pipeline is not found."""
+        config = PipelineConfig(**valid_pipeline_config)
+        pipeline = Pipeline(host="http://localhost:8080", config=config)
+        patch_data = {"sink": valid_pipeline_config["sink"]}
+
+        with patch("httpx.Client.request", return_value=mock_not_found_response):
+            with pytest.raises(errors.PipelineNotFoundError):
+                pipeline.update(patch_data)
+
+    def test_update_pipeline_invalid_config(self, valid_pipeline_config, mock_bad_request_response):
+        """Test pipeline update with invalid configuration."""
+        config = PipelineConfig(**valid_pipeline_config)
+        pipeline = Pipeline(host="http://localhost:8080", config=config)
+        patch_data = {"sink": {"invalid": "data"}}
+        mock_bad_request_response.json.return_value = {"message": "Invalid configuration"}
+        mock_bad_request_response.status_code = 422
+
+        with patch("httpx.Client.request", return_value=mock_bad_request_response):
+            with pytest.raises(errors.PipelineInvalidConfigurationError):
+                pipeline.update(patch_data)
+
+    def test_update_pipeline_connection_error(self, valid_pipeline_config, mock_connection_error):
+        """Test pipeline update with connection error."""
+        config = PipelineConfig(**valid_pipeline_config)
+        pipeline = Pipeline(host="http://localhost:8080", config=config)
+        patch_data = {"sink": valid_pipeline_config["sink"]}
+
+        with patch("httpx.Client.request", side_effect=mock_connection_error):
+            with pytest.raises(errors.ConnectionError) as exc_info:
+                pipeline.update(patch_data)
+            assert "Failed to connect to GlassFlow ETL API" in str(exc_info.value)

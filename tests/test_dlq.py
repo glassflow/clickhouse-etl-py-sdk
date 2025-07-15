@@ -98,7 +98,9 @@ class TestDLQ:
         """Test DLQ consume with server error."""
         mock_response = Mock()
         mock_response.status_code = 500
-        mock_response.text = "Internal server error"
+        mock_response.json.return_value = {
+            "message": "Internal server error"
+        }
 
         mock_error = httpx.HTTPStatusError(
             "500 Internal Server Error", request=Mock(), response=mock_response
@@ -108,7 +110,7 @@ class TestDLQ:
             with pytest.raises(errors.ServerError) as exc_info:
                 dlq_test.consume(batch_size=50)
 
-            assert "Server error" in str(exc_info.value)
+            assert "Internal server error" in str(exc_info.value)
 
     def test_consume_connection_error(self, dlq_test):
         """Test DLQ consume with connection error."""
@@ -144,7 +146,9 @@ class TestDLQ:
         """Test DLQ state with server error."""
         mock_response = Mock()
         mock_response.status_code = 500
-        mock_response.text = "Internal server error"
+        mock_response.json.return_value = {
+            "message": "Internal server error"
+        }
 
         mock_error = httpx.HTTPStatusError(
             "500 Internal Server Error", request=Mock(), response=mock_response
@@ -154,7 +158,7 @@ class TestDLQ:
             with pytest.raises(errors.ServerError) as exc_info:
                 dlq_test.state()
 
-            assert "Server error" in str(exc_info.value)
+            assert "Internal server error" in str(exc_info.value)
 
     def test_state_connection_error(self, dlq_test):
         """Test DLQ state with connection error."""

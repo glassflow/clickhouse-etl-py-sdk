@@ -4,9 +4,9 @@ from pydantic import BaseModel, Field, field_validator
 
 from ..errors import InvalidDataTypeMappingError
 from .data_types import kafka_to_clickhouse_data_type_mappings
-from .join import JoinConfig
-from .sink import SinkConfig
-from .source import SourceConfig
+from .join import JoinConfig, JoinConfigPatch
+from .sink import SinkConfig, SinkConfigPatch
+from .source import SourceConfig, SourceConfigPatch
 
 
 class PipelineConfig(BaseModel):
@@ -154,3 +154,10 @@ class PipelineConfig(BaseModel):
                 )
 
         return v
+
+
+
+class PipelineConfigPatch(BaseModel):
+    source: Optional[SourceConfigPatch] = Field(default=None)
+    join: Optional[JoinConfigPatch] = Field(default=None)
+    sink: Optional[SinkConfigPatch] = Field(default=None)

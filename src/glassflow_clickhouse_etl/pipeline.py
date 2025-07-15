@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from httpx._models import Response
 from pydantic import ValidationError
 
 from . import errors, models
@@ -60,23 +61,14 @@ class Pipeline(APIClient):
             PipelineNotFoundError: If pipeline is not found
             APIError: If the API request fails
         """
-        try:
-            response = self._request("GET", f"{self.ENDPOINT}/{self.pipeline_id}")
-            pipeline_data = response.json()
-
-            self.config = models.PipelineConfig.model_validate(pipeline_data)
-            self._dlq = DLQ(pipeline_id=self.pipeline_id, host=self.host)
-            return self
-        except errors.NotFoundError as e:
-            self._track_event("PipelineGetError", error_type="PipelineNotFound")
-            raise errors.PipelineNotFoundError(
-                status_code=e.status_code,
-                message=f"Pipeline with id '{self.pipeline_id}' not found",
-                response=e.response,
-            ) from e
-        except errors.APIError as e:
-            self._track_event("PipelineGetError", error_type="InternalServerError")
-            raise e
+        response = self._request(
+            "GET", 
+            f"{self.ENDPOINT}/{self.pipeline_id}", 
+            event_name="PipelineGet"
+        )
+        self.config = models.PipelineConfig.model_validate(response.json())
+        self._dlq = DLQ(pipeline_id=self.pipeline_id, host=self.host)
+        return self
 
     def create(self) -> Pipeline:
         """Creates a new pipeline with the given config.
@@ -100,13 +92,12 @@ class Pipeline(APIClient):
                     by_alias=True,
                     exclude_none=True,
                 ),
+                event_name="PipelineCreated",
             )
-
-            self._track_event("PipelineDeployed")
             return self
 
         except errors.ForbiddenError as e:
-            self._track_event("PipelineCreateError", error_type="PipelineAlreadyExists")
+            self._track_event("PipelineCreated", error_type="PipelineAlreadyExists")
             raise errors.PipelineAlreadyExistsError(
                 status_code=e.status_code,
                 message=f"Pipeline with ID {self.config.pipeline_id} already exists;"
@@ -114,19 +105,49 @@ class Pipeline(APIClient):
                 "different pipeline ID",
                 response=e.response,
             ) from e
-        except errors.UnprocessableContentError as e:
-            self._track_event(
-                "PipelineCreateError", error_type="InvalidPipelineConfig"
+
+    def update(self, config_patch: models.PipelineConfigPatch | dict[str, Any], validate: bool = True) -> Pipeline:
+        """Updates the pipeline with the given config.
+
+        Args:
+            config_patch: Pipeline configuration patch
+            validate: Whether to get the latest config from GlassFlow 
+                and validate the config patch
+
+        Returns:
+            Pipeline: A Pipeline instance for the updated pipeline
+
+        Raises:
+            PipelineNotFoundError: If pipeline is not found
+            APIError: If the API request fails
+        """
+        if isinstance(config_patch, dict):
+            # Validate the config patch
+            config_patch = models.PipelineConfigPatch.model_validate(config_patch).model_dump(
+                mode="json",
+                by_alias=True,
+                exclude_none=True,
             )
-            raise errors.PipelineInvalidConfigurationError(
-                status_code=e.status_code,
-                message=e.message or "Invalid pipeline configuration",
-            ) from e
-        except errors.APIError as e:
-                self._track_event(
-                    "PipelineCreateError", error_type="InternalServerError"
+            
+        if validate:
+            # Make sure we have the latest config from GlassFlow
+            self.get()
+        
+            # Validate the merged config
+            models.PipelineConfig.model_validate(
+                self.config.model_copy(
+                    update=config_patch
                 )
-                raise e
+            )
+        
+        response = self._request(
+            "PATCH",
+            f"{self.ENDPOINT}/{self.pipeline_id}",
+            json=config_patch,
+            event_name="PipelineUpdated",
+        )
+        self.config = models.PipelineConfig.model_validate(response.json())
+        return self
 
     def delete(self) -> None:
         """Deletes the pipeline with the given ID.
@@ -137,20 +158,8 @@ class Pipeline(APIClient):
         """
         if self.config is None:
             self.get()
-        try:
-            endpoint = f"{self.ENDPOINT}/{self.pipeline_id}"
-            self._request("DELETE", endpoint)
-            self._track_event("PipelineDeleted")
-        except errors.NotFoundError as e:
-            self._track_event("PipelineDeleteError", error_type="PipelineNotFound")
-            raise errors.PipelineNotFoundError(
-                status_code=e.status_code,
-                message=f"Pipeline with id '{self.pipeline_id}' not found",
-                response=e.response,
-            ) from e
-        except errors.APIError as e:
-            self._track_event("PipelineDeleteError", error_type="InternalServerError")
-            raise e
+        endpoint = f"{self.ENDPOINT}/{self.pipeline_id}"
+        self._request("DELETE", endpoint, event_name="PipelineDeleted")
 
     def pause(self) -> Pipeline:
         """Pauses the pipeline with the given ID.
@@ -162,21 +171,9 @@ class Pipeline(APIClient):
             PipelineNotFoundError: If pipeline is not found
             APIError: If the API request fails
         """
-        try:
-            endpoint = f"{self.ENDPOINT}/{self.pipeline_id}/pause"
-            self._request("POST", endpoint)
-            self._track_event("PipelinePaused")
-            return self
-        except errors.NotFoundError as e:
-            self._track_event("PipelinePauseError", error_type="PipelineNotFound")
-            raise errors.PipelineNotFoundError(
-                status_code=e.status_code,
-                message=f"Pipeline with id '{self.pipeline_id}' not found",
-                response=e.response,
-            ) from e
-        except errors.APIError as e:
-            self._track_event("PipelinePauseError", error_type="InternalServerError")
-            raise e
+        endpoint = f"{self.ENDPOINT}/{self.pipeline_id}/pause"
+        self._request("POST", endpoint, event_name="PipelinePaused")
+        return self
 
     def resume(self) -> Pipeline:
         """Resumes the pipeline with the given ID.
@@ -188,21 +185,9 @@ class Pipeline(APIClient):
             PipelineNotFoundError: If pipeline is not found
             APIError: If the API request fails
         """
-        try:
-            endpoint = f"{self.ENDPOINT}/{self.pipeline_id}/resume"
-            self._request("POST", endpoint)
-            self._track_event("PipelineResumed")
-            return self
-        except errors.NotFoundError as e:
-            self._track_event("PipelineResumeError", error_type="PipelineNotFound")
-            raise errors.PipelineNotFoundError(
-                status_code=e.status_code,
-                message=f"Pipeline with id '{self.pipeline_id}' not found",
-                response=e.response,
-            ) from e
-        except errors.APIError as e:
-            self._track_event("PipelineResumeError", error_type="InternalServerError")
-            raise e
+        endpoint = f"{self.ENDPOINT}/{self.pipeline_id}/resume"
+        self._request("POST", endpoint, event_name="PipelineResumed")
+        return self
 
     def to_dict(self) -> dict[str, Any]:
         """Convert the pipeline configuration to a dictionary.
@@ -292,3 +277,27 @@ class Pipeline(APIClient):
         pipeline_properties = self._tracking_info()
         properties = {**pipeline_properties, **kwargs}
         super()._track_event(event_name, **properties)
+        
+    def _request(self, method: str, endpoint: str, event_name: str, **kwargs: Any) -> Response:
+        try:
+            response = super()._request(method, endpoint, **kwargs)
+            self._track_event(event_name)
+            return response
+        except errors.NotFoundError as e:
+            self._track_event(event_name, error_type="PipelineNotFound")
+            raise errors.PipelineNotFoundError(
+                status_code=e.status_code,
+                message=f"Pipeline with id '{self.pipeline_id}' not found",
+                response=e.response,
+            ) from e
+        except errors.UnprocessableContentError as e:
+            self._track_event(
+                event_name, error_type="InvalidPipelineConfig"
+            )
+            raise errors.PipelineInvalidConfigurationError(
+                status_code=e.status_code,
+                message=e.message or "Invalid pipeline configuration",
+            ) from e
+        except errors.APIError as e:
+            self._track_event(event_name, error_type="InternalServerError")
+            raise e
