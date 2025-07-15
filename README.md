@@ -152,7 +152,8 @@ pipeline_config = {
 pipeline = client.create_pipeline(pipeline_config)
 ```
 
-or get an existing pipeline using the pipeline ID:
+
+## Get pipeline
 
 ```python
 # Get a pipeline by ID
@@ -173,6 +174,30 @@ client.delete_pipeline("my-pipeline-id")
 
 # Or delete via pipeline instance
 pipeline.delete()
+```
+
+### Update pipeline
+
+```python
+# Update the sink table name
+config_patch = {
+  "sink": {
+    "table": "new_table_name"
+  }
+}
+
+pipeline = client.get_pipeline("my-pipeline-id")
+pipeline.update(config_patch)
+```
+
+### Pause / Resume pipeline
+
+```python
+# Will stop ingesting new messages and finish processing the messages inside the pipeline
+pipeline.pause()
+
+# Will resume ingestion
+pipeline.resume()
 ```
 
 ## Pipeline Configuration
