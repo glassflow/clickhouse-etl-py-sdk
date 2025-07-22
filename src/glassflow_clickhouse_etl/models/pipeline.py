@@ -1,3 +1,4 @@
+import re
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field, field_validator
@@ -20,6 +21,16 @@ class PipelineConfig(BaseModel):
     def validate_pipeline_id(cls, v: str) -> str:
         if not v:
             raise ValueError("pipeline_id cannot be empty")
+        if len(v) > 40:
+            raise ValueError("pipeline_id cannot be longer than 40 characters")
+        if not re.match(r"^[a-z0-9-]+$", v):
+            raise ValueError(
+                "pipeline_id can only contain lowercase letters, numbers, and hyphens"
+            )
+        if not re.match(r"^[a-z]", v):
+            raise ValueError("pipeline_id must start with a lowercase letter")
+        if not re.match(r".*[a-z]$", v):
+            raise ValueError("pipeline_id must end with a lowercase letter")
         return v
 
     @field_validator("join")
@@ -154,7 +165,6 @@ class PipelineConfig(BaseModel):
                 )
 
         return v
-
 
 
 class PipelineConfigPatch(BaseModel):

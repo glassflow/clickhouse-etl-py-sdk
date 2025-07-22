@@ -336,3 +336,54 @@ class TestModels:
 
         with pytest.raises(errors.InvalidDataTypeMappingError):
             models.PipelineConfig(**valid_pipeline_config)
+
+    def test_pipeline_config_pipeline_id_validation(self, valid_pipeline_config):
+        """Test PipelineConfig validation for pipeline_id."""
+        # Test with valid configuration
+        config = models.PipelineConfig(
+            pipeline_id="test-pipeline-123a",
+            source=valid_pipeline_config["source"],
+            join=valid_pipeline_config["join"],
+            sink=valid_pipeline_config["sink"],
+        )
+        assert config.pipeline_id == "test-pipeline-123a"
+
+        # Test with invalid configuration
+        with pytest.raises(ValueError) as exc_info:
+            models.PipelineConfig(
+                pipeline_id="Test_Pipeline",
+                source=valid_pipeline_config["source"],
+                join=valid_pipeline_config["join"],
+                sink=valid_pipeline_config["sink"],
+            )
+        assert (
+            "pipeline_id can only contain lowercase letters, numbers, and hyphens"
+            in str(exc_info.value)
+        )
+
+        with pytest.raises(ValueError) as exc_info:
+            models.PipelineConfig(
+                pipeline_id="test-pipeline-1234567890123456789012345678901234567890",
+                source=valid_pipeline_config["source"],
+                join=valid_pipeline_config["join"],
+                sink=valid_pipeline_config["sink"],
+            )
+        assert "pipeline_id cannot be longer than 40 characters" in str(exc_info.value)
+
+        with pytest.raises(ValueError) as exc_info:
+            models.PipelineConfig(
+                pipeline_id="-test-pipeline",
+                source=valid_pipeline_config["source"],
+                join=valid_pipeline_config["join"],
+                sink=valid_pipeline_config["sink"],
+            )
+        assert "pipeline_id must start with a lowercase letter" in str(exc_info.value)
+
+        with pytest.raises(ValueError) as exc_info:
+            models.PipelineConfig(
+                pipeline_id="test-pipeline-",
+                source=valid_pipeline_config["source"],
+                join=valid_pipeline_config["join"],
+                sink=valid_pipeline_config["sink"],
+            )
+        assert "pipeline_id must end with a lowercase letter" in str(exc_info.value)
