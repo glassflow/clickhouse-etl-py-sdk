@@ -68,25 +68,17 @@ class APIClient:
         except json.JSONDecodeError:
             message = f"{status_code} {response.reason_phrase}"
         if status_code == 400:
-            raise errors.ValidationError(
-                status_code, message, response=response
-            )
+            raise errors.ValidationError(status_code, message, response=response)
         elif status_code == 403:
-            raise errors.ForbiddenError(
-                status_code, message, response=response
-            )
+            raise errors.ForbiddenError(status_code, message, response=response)
         elif status_code == 404:
-            raise errors.NotFoundError(
-                status_code, message, response=response
-            )
+            raise errors.NotFoundError(status_code, message, response=response)
         elif status_code == 422:
             raise errors.UnprocessableContentError(
                 status_code, message, response=response
             )
         elif status_code == 500:
-            raise errors.ServerError(
-                status_code, message, response=response
-            )
+            raise errors.ServerError(status_code, message, response=response)
         else:
             raise errors.APIError(
                 status_code,

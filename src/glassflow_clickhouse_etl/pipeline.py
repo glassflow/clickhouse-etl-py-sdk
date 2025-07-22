@@ -62,9 +62,7 @@ class Pipeline(APIClient):
             APIError: If the API request fails
         """
         response = self._request(
-            "GET", 
-            f"{self.ENDPOINT}/{self.pipeline_id}", 
-            event_name="PipelineGet"
+            "GET", f"{self.ENDPOINT}/{self.pipeline_id}", event_name="PipelineGet"
         )
         self.config = models.PipelineConfig.model_validate(response.json())
         self._dlq = DLQ(pipeline_id=self.pipeline_id, host=self.host)
@@ -106,12 +104,16 @@ class Pipeline(APIClient):
                 response=e.response,
             ) from e
 
-    def update(self, config_patch: models.PipelineConfigPatch | dict[str, Any], validate: bool = True) -> Pipeline:
+    def update(
+        self,
+        config_patch: models.PipelineConfigPatch | dict[str, Any],
+        validate: bool = True,
+    ) -> Pipeline:
         """Updates the pipeline with the given config.
 
         Args:
             config_patch: Pipeline configuration patch
-            validate: Whether to get the latest config from GlassFlow 
+            validate: Whether to get the latest config from GlassFlow
                 and validate the config patch
 
         Returns:
@@ -123,23 +125,23 @@ class Pipeline(APIClient):
         """
         if isinstance(config_patch, dict):
             # Validate the config patch
-            config_patch = models.PipelineConfigPatch.model_validate(config_patch).model_dump(
+            config_patch = models.PipelineConfigPatch.model_validate(
+                config_patch
+            ).model_dump(
                 mode="json",
                 by_alias=True,
                 exclude_none=True,
             )
-            
+
         if validate:
             # Make sure we have the latest config from GlassFlow
             self.get()
-        
+
             # Validate the merged config
             models.PipelineConfig.model_validate(
-                self.config.model_copy(
-                    update=config_patch
-                )
+                self.config.model_copy(update=config_patch)
             )
-        
+
         response = self._request(
             "PATCH",
             f"{self.ENDPOINT}/{self.pipeline_id}",
@@ -277,8 +279,10 @@ class Pipeline(APIClient):
         pipeline_properties = self._tracking_info()
         properties = {**pipeline_properties, **kwargs}
         super()._track_event(event_name, **properties)
-        
-    def _request(self, method: str, endpoint: str, event_name: str, **kwargs: Any) -> Response:
+
+    def _request(
+        self, method: str, endpoint: str, event_name: str, **kwargs: Any
+    ) -> Response:
         try:
             response = super()._request(method, endpoint, **kwargs)
             self._track_event(event_name)
@@ -291,9 +295,7 @@ class Pipeline(APIClient):
                 response=e.response,
             ) from e
         except errors.UnprocessableContentError as e:
-            self._track_event(
-                event_name, error_type="InvalidPipelineConfig"
-            )
+            self._track_event(event_name, error_type="InvalidPipelineConfig")
             raise errors.PipelineInvalidConfigurationError(
                 status_code=e.status_code,
                 message=e.message or "Invalid pipeline configuration",

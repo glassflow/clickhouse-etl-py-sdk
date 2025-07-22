@@ -98,9 +98,7 @@ class TestDLQ:
         """Test DLQ consume with server error."""
         mock_response = Mock()
         mock_response.status_code = 500
-        mock_response.json.return_value = {
-            "message": "Internal server error"
-        }
+        mock_response.json.return_value = {"message": "Internal server error"}
 
         mock_error = httpx.HTTPStatusError(
             "500 Internal Server Error", request=Mock(), response=mock_response
@@ -146,9 +144,7 @@ class TestDLQ:
         """Test DLQ state with server error."""
         mock_response = Mock()
         mock_response.status_code = 500
-        mock_response.json.return_value = {
-            "message": "Internal server error"
-        }
+        mock_response.json.return_value = {"message": "Internal server error"}
 
         mock_error = httpx.HTTPStatusError(
             "500 Internal Server Error", request=Mock(), response=mock_response
