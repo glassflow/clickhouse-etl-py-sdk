@@ -37,11 +37,11 @@ class Client(APIClient):
         """
         return Pipeline(host=self.host, pipeline_id=pipeline_id).get()
 
-    def list_pipelines(self) -> List[str]:
-        """Returns a list of available pipeline IDs.
+    def list_pipelines(self) -> List[dict]:
+        """Returns a list of available pipelines.
 
         Returns:
-            List[str]: List of pipeline IDs
+            List[dict]: List of pipeline items with details as dictionaries
 
         Raises:
             APIError: If the API request fails
@@ -50,26 +50,8 @@ class Client(APIClient):
             response = self._request("GET", self.ENDPOINT)
             data = response.json()
 
-            # Handle different response formats
-            if isinstance(data, list):
-                # If response is a list of pipeline objects
-                return [
-                    pipeline.get("id", pipeline.get("pipeline_id"))
-                    for pipeline in data
-                    if "id" in pipeline or "pipeline_id" in pipeline
-                ]
-            elif isinstance(data, dict) and "pipelines" in data:
-                # If response is wrapped in a "pipelines" key
-                return [
-                    pipeline.get("id", pipeline.get("pipeline_id"))
-                    for pipeline in data["pipelines"]
-                    if "id" in pipeline or "pipeline_id" in pipeline
-                ]
-            elif isinstance(data, dict) and "id" in data:
-                # If response is a single pipeline (current behavior)
-                return [data["id"]]
-            else:
-                return []
+            # API always returns a list of pipelines
+            return data if isinstance(data, list) else []
 
         except errors.NotFoundError:
             # No pipelines found, return empty list

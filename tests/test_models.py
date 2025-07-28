@@ -351,6 +351,17 @@ class TestModels:
         # Test with invalid configuration
         with pytest.raises(ValueError) as exc_info:
             models.PipelineConfig(
+                pipeline_id="",
+                source=valid_pipeline_config["source"],
+                join=valid_pipeline_config["join"],
+                sink=valid_pipeline_config["sink"],
+            )
+        assert (
+            "pipeline_id cannot be empty" in str(exc_info.value) in str(exc_info.value)
+        )
+
+        with pytest.raises(ValueError) as exc_info:
+            models.PipelineConfig(
                 pipeline_id="Test_Pipeline",
                 source=valid_pipeline_config["source"],
                 join=valid_pipeline_config["join"],

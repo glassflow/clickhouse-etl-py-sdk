@@ -53,28 +53,64 @@ class TestClient:
         mock_response.status_code = 200
         mock_response.raise_for_status.return_value = None
         mock_response.json.return_value = [
-            {"id": "pipeline-1"},
-            {"id": "pipeline-2"},
-            {"pipeline_id": "pipeline-3"},
+            {
+                "pipeline_id": "loadtest",
+                "name": "loadtest",
+                "transformation_type": "Deduplication",
+                "created_at": "2025-07-28T11:50:05.478766129Z",
+                "state": "",
+            },
+            {
+                "pipeline_id": "loadtest-4",
+                "name": "loadtest-4",
+                "transformation_type": "Ingest Only",
+                "created_at": "2025-07-28T11:52:53.210108151Z",
+                "state": "",
+            },
+            {
+                "pipeline_id": "loadtest-5",
+                "name": "loadtest-5",
+                "transformation_type": "Join",
+                "created_at": "2025-07-28T11:54:46.270842895Z",
+                "state": "",
+            },
         ]
 
         with patch("httpx.Client.request", return_value=mock_response) as mock_request:
-            pipeline_ids = client.list_pipelines()
+            pipelines = client.list_pipelines()
             mock_request.assert_called_once_with("GET", client.ENDPOINT)
-            assert pipeline_ids == ["pipeline-1", "pipeline-2", "pipeline-3"]
+            assert len(pipelines) == 3
+            assert pipelines[0]["pipeline_id"] == "loadtest"
+            assert pipelines[0]["name"] == "loadtest"
+            assert pipelines[0]["transformation_type"] == "Deduplication"
+            assert pipelines[1]["pipeline_id"] == "loadtest-4"
+            assert pipelines[1]["transformation_type"] == "Ingest Only"
+            assert pipelines[2]["pipeline_id"] == "loadtest-5"
+            assert pipelines[2]["transformation_type"] == "Join"
 
-    def test_client_list_pipeline_success_single_format(self):
-        """Test successful pipeline listing with single pipeline format response."""
+    def test_client_list_pipeline_success_single_item(self):
+        """Test successful pipeline listing with single pipeline in list response."""
         client = Client()
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.raise_for_status.return_value = None
-        mock_response.json.return_value = {"id": "single-pipeline"}
+        mock_response.json.return_value = [
+            {
+                "pipeline_id": "single-pipeline",
+                "name": "single-pipeline",
+                "transformation_type": "Ingest Only",
+                "created_at": "2025-07-28T11:50:05.478766129Z",
+                "state": "",
+            }
+        ]
 
         with patch("httpx.Client.request", return_value=mock_response) as mock_request:
-            pipeline_ids = client.list_pipelines()
+            pipelines = client.list_pipelines()
             mock_request.assert_called_once_with("GET", client.ENDPOINT)
-            assert pipeline_ids == ["single-pipeline"]
+            assert len(pipelines) == 1
+            assert pipelines[0]["pipeline_id"] == "single-pipeline"
+            assert pipelines[0]["name"] == "single-pipeline"
+            assert pipelines[0]["transformation_type"] == "Ingest Only"
 
     def test_client_list_pipelines_empty(self):
         """Test pipeline listing when no pipelines exist."""
@@ -84,9 +120,9 @@ class TestClient:
         mock_response.raise_for_status.side_effect = None  # Don't raise for 404
 
         with patch("httpx.Client.request", return_value=mock_response) as mock_request:
-            pipeline_ids = client.list_pipelines()
+            pipelines = client.list_pipelines()
             mock_request.assert_called_once_with("GET", client.ENDPOINT)
-            assert pipeline_ids == []
+            assert pipelines == []
 
     def test_client_create_pipeline_success(
         self, valid_pipeline_config, mock_success_response

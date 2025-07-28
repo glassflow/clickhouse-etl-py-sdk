@@ -163,7 +163,13 @@ pipeline = client.get_pipeline("my-pipeline-id")
 ### List pipelines
 
 ```python
-pipeline_ids = client.list_pipelines()
+pipelines = client.list_pipelines()
+for pipeline in pipelines:
+    print(f"Pipeline ID: {pipeline['pipeline_id']}")
+    print(f"Name: {pipeline['name']}")
+    print(f"Transformation Type: {pipeline['transformation_type']}")
+    print(f"Created At: {pipeline['created_at']}")
+    print(f"State: {pipeline['state']}")
 ```
 
 ### Delete pipeline
