@@ -398,3 +398,26 @@ class TestModels:
                 sink=valid_pipeline_config["sink"],
             )
         assert "pipeline_id must end with a lowercase letter" in str(exc_info.value)
+
+    def test_pipeline_config_pipeline_name_provided(self, valid_pipeline_config):
+        """Test PipelineConfig when pipeline_name is explicitly provided."""
+        config = models.PipelineConfig(
+            pipeline_id="test-pipeline",
+            name="My Custom Pipeline Name",
+            source=valid_pipeline_config["source"],
+            join=valid_pipeline_config["join"],
+            sink=valid_pipeline_config["sink"],
+        )
+        assert config.pipeline_id == "test-pipeline"
+        assert config.name == "My Custom Pipeline Name"
+
+    def test_pipeline_config_pipeline_name_not_provided(self, valid_pipeline_config):
+        """Test PipelineConfig when pipeline_name is not provided (default behavior)."""
+        config = models.PipelineConfig(
+            pipeline_id="test-pipeline",
+            source=valid_pipeline_config["source"],
+            join=valid_pipeline_config["join"],
+            sink=valid_pipeline_config["sink"],
+        )
+        assert config.pipeline_id == "test-pipeline"
+        assert config.name == "Test Pipeline"

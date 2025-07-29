@@ -1,7 +1,7 @@
 import re
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from ..errors import InvalidDataTypeMappingError
 from .data_types import kafka_to_clickhouse_data_type_mappings
@@ -12,6 +12,7 @@ from .source import SourceConfig, SourceConfigPatch
 
 class PipelineConfig(BaseModel):
     pipeline_id: str
+    name: Optional[str] = Field(default=None)
     source: SourceConfig
     join: Optional[JoinConfig] = Field(default=JoinConfig())
     sink: SinkConfig
@@ -32,6 +33,16 @@ class PipelineConfig(BaseModel):
         if not re.match(r".*[a-z]$", v):
             raise ValueError("pipeline_id must end with a lowercase letter")
         return v
+
+    @model_validator(mode='after')
+    def set_pipeline_name(self) -> 'PipelineConfig':
+        """
+        If name is not provided, use the pipeline_id and replace hyphens
+        with spaces.
+        """
+        if self.name is None:
+            self.name = self.pipeline_id.replace("-", " ").title()
+        return self
 
     @field_validator("join")
     @classmethod
