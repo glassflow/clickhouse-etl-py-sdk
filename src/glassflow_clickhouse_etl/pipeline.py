@@ -125,8 +125,7 @@ class Pipeline(APIClient):
         return self
 
     def update(
-        self,
-        config_patch: models.PipelineConfigPatch | dict[str, Any]
+        self, config_patch: models.PipelineConfigPatch | dict[str, Any]
     ) -> Pipeline:
         """Updates the pipeline with the given config.
 

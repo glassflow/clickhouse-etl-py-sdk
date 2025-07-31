@@ -34,8 +34,8 @@ class PipelineConfig(BaseModel):
             raise ValueError("pipeline_id must end with a lowercase letter")
         return v
 
-    @model_validator(mode='after')
-    def set_pipeline_name(self) -> 'PipelineConfig':
+    @model_validator(mode="after")
+    def set_pipeline_name(self) -> "PipelineConfig":
         """
         If name is not provided, use the pipeline_id and replace hyphens
         with spaces.

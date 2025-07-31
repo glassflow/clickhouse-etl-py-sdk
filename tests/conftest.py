@@ -5,6 +5,7 @@ import httpx
 import pytest
 
 from glassflow_clickhouse_etl.dlq import DLQ
+from glassflow_clickhouse_etl.models import PipelineConfig
 from glassflow_clickhouse_etl.pipeline import Pipeline
 
 
@@ -439,3 +440,43 @@ def dlq_test():
 def pipeline_test():
     """Fixture for a Pipeline instance."""
     return Pipeline(host="http://localhost", pipeline_id="test-pipeline")
+
+
+@pytest.fixture
+def pipeline_with_config(valid_pipeline_config):
+    """Fixture for a pipeline with valid config."""
+    config = PipelineConfig(**valid_pipeline_config)
+    return Pipeline(host="http://localhost:8080", config=config)
+
+
+@pytest.fixture
+def pipeline_with_id():
+    """Fixture for a pipeline with only pipeline_id."""
+    return Pipeline(host="http://localhost:8080", pipeline_id="test-pipeline")
+
+
+@pytest.fixture
+def test_pipeline_method(mock_success_response):
+    """Generic test helper for pipeline methods."""
+
+    def _test_method(
+        pipeline,
+        method_name,
+        expected_method,
+        expected_endpoint,
+        method_kwargs=None,
+        expected_request_kwargs=None,
+    ):
+        method_kwargs = method_kwargs or {}
+        expected_request_kwargs = expected_request_kwargs or {}
+
+        with patch(
+            "httpx.Client.request", return_value=mock_success_response
+        ) as mock_request:
+            result = getattr(pipeline, method_name)(**method_kwargs)
+            mock_request.assert_called_once_with(
+                expected_method, expected_endpoint, **expected_request_kwargs
+            )
+            return result, mock_request
+
+    return _test_method

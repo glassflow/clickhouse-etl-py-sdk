@@ -4,7 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from glassflow_clickhouse_etl import errors
-from glassflow_clickhouse_etl.models import PipelineConfig
+from glassflow_clickhouse_etl.models import PipelineConfig, PipelineConfigPatch
 from glassflow_clickhouse_etl.pipeline import Pipeline
 
 
@@ -12,32 +12,29 @@ class TestPipeline:
     """Tests for the Pipeline class."""
 
     def test_create_pipeline_success(
-        self, valid_pipeline_config, mock_success_response
+        self, pipeline_with_config, test_pipeline_method, valid_pipeline_config
     ):
         """Test successful pipeline creation."""
-        config = PipelineConfig(**valid_pipeline_config)
-        pipeline = Pipeline(host="http://localhost:8080", config=config)
-
-        with patch(
-            "httpx.Client.request", return_value=mock_success_response
-        ) as mock_post:
-            pipeline.create()
-            mock_post.assert_called_once_with(
-                "POST",
-                pipeline.ENDPOINT,
-                json=config.model_dump(mode="json", by_alias=True),
-            )
+        result, _ = test_pipeline_method(
+            pipeline_with_config,
+            "create",
+            "POST",
+            pipeline_with_config.ENDPOINT,
+            expected_request_kwargs={
+                "json": pipeline_with_config.config.model_dump(
+                    mode="json", by_alias=True
+                )
+            },
+        )
+        assert result == pipeline_with_config
 
     def test_create_pipeline_already_exists(
-        self, valid_pipeline_config, mock_forbidden_response
+        self, pipeline_with_config, mock_forbidden_response
     ):
         """Test pipeline creation when a pipeline is already active."""
-        config = PipelineConfig(**valid_pipeline_config)
-        pipeline = Pipeline(host="http://localhost:8080", config=config)
-
         with patch("httpx.Client.request", return_value=mock_forbidden_response):
             with pytest.raises(errors.PipelineAlreadyExistsError):
-                pipeline.create()
+                pipeline_with_config.create()
 
     def test_create_pipeline_invalid_config(self, invalid_pipeline_config):
         """Test pipeline creation with invalid configuration."""
@@ -46,65 +43,48 @@ class TestPipeline:
         assert "pipeline_id cannot be empty" in str(exc_info.value)
 
     def test_create_pipeline_bad_request(
-        self, valid_pipeline_config, mock_bad_request_response
+        self, pipeline_with_config, mock_bad_request_response
     ):
         """Test pipeline creation with bad request."""
-        config = PipelineConfig(**valid_pipeline_config)
-        pipeline = Pipeline(host="http://localhost:8080", config=config)
-
         with patch("httpx.Client.request", return_value=mock_bad_request_response):
             with pytest.raises(errors.ValidationError) as exc_info:
-                pipeline.create()
+                pipeline_with_config.create()
             assert "Bad request" in str(exc_info.value)
 
     def test_create_pipeline_connection_error(
-        self, valid_pipeline_config, mock_connection_error
+        self, pipeline_with_config, mock_connection_error
     ):
         """Test pipeline creation with connection error."""
-        config = PipelineConfig(**valid_pipeline_config)
-        pipeline = Pipeline(host="http://localhost:8080", config=config)
-
         with patch("httpx.Client.request", side_effect=mock_connection_error):
             with pytest.raises(errors.ConnectionError) as exc_info:
-                pipeline.create()
+                pipeline_with_config.create()
             assert "Failed to connect to GlassFlow ETL API" in str(exc_info.value)
 
-    def test_delete_pipeline_success(
-        self, valid_pipeline_config, mock_success_response
-    ):
+    def test_delete_pipeline_success(self, pipeline_with_config, test_pipeline_method):
         """Test successful pipeline shutdown."""
-        config = PipelineConfig(**valid_pipeline_config)
-        pipeline = Pipeline(host="http://localhost:8080", config=config)
-
-        with patch(
-            "httpx.Client.request", return_value=mock_success_response
-        ) as mock_delete:
-            pipeline.delete()
-            mock_delete.assert_called_once_with(
-                "DELETE", f"{pipeline.ENDPOINT}/{config.pipeline_id}"
-            )
+        result, _ = test_pipeline_method(
+            pipeline_with_config,
+            "delete",
+            "DELETE",
+            f"{pipeline_with_config.ENDPOINT}/{pipeline_with_config.pipeline_id}",
+        )
+        assert result is None
 
     def test_delete_pipeline_not_found(
-        self, valid_pipeline_config, mock_not_found_response
+        self, pipeline_with_config, mock_not_found_response
     ):
         """Test pipeline shutdown when no pipeline is active."""
-        config = PipelineConfig(**valid_pipeline_config)
-        pipeline = Pipeline(host="http://localhost:8080", config=config)
-
         with patch("httpx.Client.request", return_value=mock_not_found_response):
             with pytest.raises(errors.PipelineNotFoundError):
-                pipeline.delete()
+                pipeline_with_config.delete()
 
     def test_delete_pipeline_connection_error(
-        self, valid_pipeline_config, mock_connection_error
+        self, pipeline_with_config, mock_connection_error
     ):
         """Test pipeline shutdown with connection error."""
-        config = PipelineConfig(**valid_pipeline_config)
-        pipeline = Pipeline(host="http://localhost:8080", config=config)
-
         with patch("httpx.Client.request", side_effect=mock_connection_error):
             with pytest.raises(errors.ConnectionError) as exc_info:
-                pipeline.delete()
+                pipeline_with_config.delete()
             assert "Failed to connect to GlassFlow ETL API" in str(exc_info.value)
 
     def test_validate_config_valid(self, valid_pipeline_config):
@@ -119,99 +99,73 @@ class TestPipeline:
             Pipeline.validate_config(invalid_pipeline_config)
         assert "pipeline_id cannot be empty" in str(exc_info.value)
 
-    def test_pause_pipeline_success(self, valid_pipeline_config, mock_success_response):
+    def test_pause_pipeline_success(self, pipeline_with_config, test_pipeline_method):
         """Test successful pipeline pause."""
-        config = PipelineConfig(**valid_pipeline_config)
-        pipeline = Pipeline(host="http://localhost:8080", config=config)
-
-        with patch(
-            "httpx.Client.request", return_value=mock_success_response
-        ) as mock_pause:
-            pipeline.pause()
-            mock_pause.assert_called_once_with(
-                "POST", f"{pipeline.ENDPOINT}/{config.pipeline_id}/pause"
-            )
+        result, _ = test_pipeline_method(
+            pipeline_with_config,
+            "pause",
+            "POST",
+            f"{pipeline_with_config.ENDPOINT}/{pipeline_with_config.pipeline_id}/pause",
+        )
+        assert result == pipeline_with_config
 
     def test_pause_pipeline_not_found(
-        self, valid_pipeline_config, mock_not_found_response
+        self, pipeline_with_config, mock_not_found_response
     ):
         """Test pipeline pause when no pipeline is active."""
-        config = PipelineConfig(**valid_pipeline_config)
-        pipeline = Pipeline(host="http://localhost:8080", config=config)
-
         with patch("httpx.Client.request", return_value=mock_not_found_response):
             with pytest.raises(errors.PipelineNotFoundError):
-                pipeline.pause()
+                pipeline_with_config.pause()
 
     def test_pause_pipeline_connection_error(
-        self, valid_pipeline_config, mock_connection_error
+        self, pipeline_with_config, mock_connection_error
     ):
         """Test pipeline pause with connection error."""
-        config = PipelineConfig(**valid_pipeline_config)
-        pipeline = Pipeline(host="http://localhost:8080", config=config)
-
         with patch("httpx.Client.request", side_effect=mock_connection_error):
             with pytest.raises(errors.ConnectionError) as exc_info:
-                pipeline.pause()
+                pipeline_with_config.pause()
             assert "Failed to connect to GlassFlow ETL API" in str(exc_info.value)
 
-    def test_resume_pipeline_success(
-        self, valid_pipeline_config, mock_success_response
-    ):
+    def test_resume_pipeline_success(self, pipeline_with_config, test_pipeline_method):
         """Test successful pipeline resume."""
-        config = PipelineConfig(**valid_pipeline_config)
-        pipeline = Pipeline(host="http://localhost:8080", config=config)
-
-        with patch(
-            "httpx.Client.request", return_value=mock_success_response
-        ) as mock_resume:
-            pipeline.resume()
-            mock_resume.assert_called_once_with(
-                "POST", f"{pipeline.ENDPOINT}/{config.pipeline_id}/resume"
-            )
+        result, _ = test_pipeline_method(
+            pipeline_with_config,
+            "resume",
+            "POST",
+            f"{pipeline_with_config.ENDPOINT}/{pipeline_with_config.pipeline_id}/resume",
+        )
+        assert result == pipeline_with_config
 
     def test_resume_pipeline_not_found(
-        self, valid_pipeline_config, mock_not_found_response
+        self, pipeline_with_config, mock_not_found_response
     ):
         """Test pipeline resume when no pipeline is active."""
-        config = PipelineConfig(**valid_pipeline_config)
-        pipeline = Pipeline(host="http://localhost:8080", config=config)
-
         with patch("httpx.Client.request", return_value=mock_not_found_response):
             with pytest.raises(errors.PipelineNotFoundError):
-                pipeline.resume()
+                pipeline_with_config.resume()
 
     def test_resume_pipeline_connection_error(
-        self, valid_pipeline_config, mock_connection_error
+        self, pipeline_with_config, mock_connection_error
     ):
         """Test pipeline resume with connection error."""
-        config = PipelineConfig(**valid_pipeline_config)
-        pipeline = Pipeline(host="http://localhost:8080", config=config)
-
         with patch("httpx.Client.request", side_effect=mock_connection_error):
             with pytest.raises(errors.ConnectionError) as exc_info:
-                pipeline.resume()
+                pipeline_with_config.resume()
             assert "Failed to connect to GlassFlow ETL API" in str(exc_info.value)
 
-    def test_rename_pipeline_success(
-        self, valid_pipeline_config, mock_success_response
-    ):
+    def test_rename_pipeline_success(self, pipeline_with_config, test_pipeline_method):
         """Test successful pipeline rename."""
-        config = PipelineConfig(**valid_pipeline_config)
-        pipeline = Pipeline(host="http://localhost:8080", config=config)
         new_name = "renamed-pipeline"
-
-        with patch(
-            "httpx.Client.request", return_value=mock_success_response
-        ) as mock_patch:
-            result = pipeline.rename(new_name)
-            mock_patch.assert_called_once_with(
-                "PATCH",
-                f"{pipeline.ENDPOINT}/{config.pipeline_id}",
-                json={"name": new_name},
-            )
-            assert result == pipeline
-            assert pipeline.config.name == new_name
+        result, _ = test_pipeline_method(
+            pipeline_with_config,
+            "rename",
+            "PATCH",
+            f"{pipeline_with_config.ENDPOINT}/{pipeline_with_config.pipeline_id}",
+            method_kwargs={"name": new_name},
+            expected_request_kwargs={"json": {"name": new_name}},
+        )
+        assert result == pipeline_with_config
+        assert pipeline_with_config.config.name == new_name
 
     def test_tracking_info(
         self,
@@ -277,49 +231,44 @@ class TestPipeline:
         }
 
     def test_update_pipeline_success(
-        self, valid_pipeline_config, mock_success_response
+        self, pipeline_with_config, mock_success_response
     ):
         """Test successful pipeline update."""
-        from glassflow_clickhouse_etl.models import PipelineConfigPatch
+        config = pipeline_with_config.config.model_dump(mode="json", by_alias=True)
 
-        config = PipelineConfig(**valid_pipeline_config)
-        pipeline = Pipeline(host="http://localhost:8080", config=config)
-        patch_data = {"sink": valid_pipeline_config["sink"]}
-        updated_config = valid_pipeline_config.copy()
+        patch_data = {"sink": config["sink"]}
+        updated_config = config.copy()
         updated_config["sink"]["table"] = "updated_table"
         mock_success_response.json.return_value = updated_config
 
         with patch(
             "httpx.Client.request", return_value=mock_success_response
         ) as mock_patch:
-            pipeline.update(patch_data)
+            pipeline_with_config.update(patch_data)
             mock_patch.assert_called_with(
                 "UPDATE",
-                f"{pipeline.ENDPOINT}/{config.pipeline_id}",
+                f"{pipeline_with_config.ENDPOINT}/{pipeline_with_config.config.pipeline_id}",
                 json=PipelineConfigPatch(**patch_data).model_dump(
                     mode="json", by_alias=True, exclude_none=True
                 ),
             )
-            assert pipeline.config.sink.table == "updated_table"
+            assert pipeline_with_config.config.sink.table == "updated_table"
 
     def test_update_pipeline_not_found(
-        self, valid_pipeline_config, mock_not_found_response
+        self, pipeline_with_config, mock_not_found_response
     ):
         """Test pipeline update when pipeline is not found."""
-        config = PipelineConfig(**valid_pipeline_config)
-        pipeline = Pipeline(host="http://localhost:8080", config=config)
-        patch_data = {"sink": valid_pipeline_config["sink"]}
+        config = pipeline_with_config.config.model_dump(mode="json", by_alias=True)
+        patch_data = {"sink": config["sink"]}
 
         with patch("httpx.Client.request", return_value=mock_not_found_response):
             with pytest.raises(errors.PipelineNotFoundError):
-                pipeline.update(patch_data)
+                pipeline_with_config.update(patch_data)
 
     def test_update_pipeline_invalid_config(
-        self, valid_pipeline_config, mock_bad_request_response
+        self, pipeline_with_config, mock_bad_request_response
     ):
         """Test pipeline update with invalid configuration."""
-        config = PipelineConfig(**valid_pipeline_config)
-        pipeline = Pipeline(host="http://localhost:8080", config=config)
         patch_data = {"sink": {"invalid": "data"}}
         mock_bad_request_response.json.return_value = {
             "message": "Invalid configuration"
@@ -328,17 +277,16 @@ class TestPipeline:
 
         with patch("httpx.Client.request", return_value=mock_bad_request_response):
             with pytest.raises(errors.PipelineInvalidConfigurationError):
-                pipeline.update(patch_data)
+                pipeline_with_config.update(patch_data)
 
     def test_update_pipeline_connection_error(
-        self, valid_pipeline_config, mock_connection_error
+        self, pipeline_with_config, mock_connection_error
     ):
         """Test pipeline update with connection error."""
-        config = PipelineConfig(**valid_pipeline_config)
-        pipeline = Pipeline(host="http://localhost:8080", config=config)
-        patch_data = {"sink": valid_pipeline_config["sink"]}
+        config = pipeline_with_config.config.model_dump(mode="json", by_alias=True)
+        patch_data = {"sink": config["sink"]}
 
         with patch("httpx.Client.request", side_effect=mock_connection_error):
             with pytest.raises(errors.ConnectionError) as exc_info:
-                pipeline.update(patch_data)
+                pipeline_with_config.update(patch_data)
             assert "Failed to connect to GlassFlow ETL API" in str(exc_info.value)
