@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from typing import Any
 
 from httpx._models import Response
@@ -104,17 +105,33 @@ class Pipeline(APIClient):
                 response=e.response,
             ) from e
 
+    def rename(self, name: str) -> Pipeline:
+        """Renames the pipeline with the given name.
+
+        Returns:
+            Pipeline: A Pipeline instance for the renamed pipeline
+
+        Raises:
+            PipelineNotFoundError: If pipeline is not found
+            APIError: If the API request fails
+        """
+        self._request(
+            "PATCH",
+            f"{self.ENDPOINT}/{self.pipeline_id}",
+            json={"name": name},
+            event_name="PipelineRenamed",
+        )
+        self.config.name = name
+        return self
+
     def update(
         self,
-        config_patch: models.PipelineConfigPatch | dict[str, Any],
-        validate: bool = True,
+        config_patch: models.PipelineConfigPatch | dict[str, Any]
     ) -> Pipeline:
         """Updates the pipeline with the given config.
 
         Args:
             config_patch: Pipeline configuration patch
-            validate: Whether to get the latest config from GlassFlow
-                and validate the config patch
 
         Returns:
             Pipeline: A Pipeline instance for the updated pipeline
@@ -123,6 +140,13 @@ class Pipeline(APIClient):
             PipelineNotFoundError: If pipeline is not found
             APIError: If the API request fails
         """
+        warnings.warn(
+            "This operation will pause the pipeline and update the pipeline once all "
+            "the events from internal queues have been processed",
+            category=UserWarning,
+            stacklevel=2,
+        )
+
         if isinstance(config_patch, dict):
             # Validate the config patch
             config_patch = models.PipelineConfigPatch.model_validate(
@@ -133,17 +157,16 @@ class Pipeline(APIClient):
                 exclude_none=True,
             )
 
-        if validate:
-            # Make sure we have the latest config from GlassFlow
-            self.get()
+        # Make sure we have the latest config from GlassFlow
+        self.get()
 
-            # Validate the merged config
-            models.PipelineConfig.model_validate(
-                self.config.model_copy(update=config_patch)
-            )
+        # Validate the merged config
+        models.PipelineConfig.model_validate(
+            self.config.model_copy(update=config_patch)
+        )
 
         response = self._request(
-            "PATCH",
+            "UPDATE",
             f"{self.ENDPOINT}/{self.pipeline_id}",
             json=config_patch,
             event_name="PipelineUpdated",

@@ -193,6 +193,26 @@ class TestPipeline:
                 pipeline.resume()
             assert "Failed to connect to GlassFlow ETL API" in str(exc_info.value)
 
+    def test_rename_pipeline_success(
+        self, valid_pipeline_config, mock_success_response
+    ):
+        """Test successful pipeline rename."""
+        config = PipelineConfig(**valid_pipeline_config)
+        pipeline = Pipeline(host="http://localhost:8080", config=config)
+        new_name = "renamed-pipeline"
+
+        with patch(
+            "httpx.Client.request", return_value=mock_success_response
+        ) as mock_patch:
+            result = pipeline.rename(new_name)
+            mock_patch.assert_called_once_with(
+                "PATCH",
+                f"{pipeline.ENDPOINT}/{config.pipeline_id}",
+                json={"name": new_name},
+            )
+            assert result == pipeline
+            assert pipeline.config.name == new_name
+
     def test_tracking_info(
         self,
         valid_pipeline_config,
@@ -272,9 +292,9 @@ class TestPipeline:
         with patch(
             "httpx.Client.request", return_value=mock_success_response
         ) as mock_patch:
-            pipeline.update(patch_data, validate=False)
-            mock_patch.assert_called_once_with(
-                "PATCH",
+            pipeline.update(patch_data)
+            mock_patch.assert_called_with(
+                "UPDATE",
                 f"{pipeline.ENDPOINT}/{config.pipeline_id}",
                 json=PipelineConfigPatch(**patch_data).model_dump(
                     mode="json", by_alias=True, exclude_none=True

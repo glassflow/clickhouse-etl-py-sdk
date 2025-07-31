@@ -88,4 +88,4 @@ select = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-addopts = "-v --cov=src/glassflow_clickhouse_etl --cov-report=term-missing"
+addopts = "-v --cov=src/glassflow_clickhouse_etl --cov-report=term-missing -p no:warnings"

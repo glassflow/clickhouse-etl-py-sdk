@@ -179,6 +179,7 @@ class PipelineConfig(BaseModel):
 
 
 class PipelineConfigPatch(BaseModel):
+    name: Optional[str] = Field(default=None)
     source: Optional[SourceConfigPatch] = Field(default=None)
     join: Optional[JoinConfigPatch] = Field(default=None)
     sink: Optional[SinkConfigPatch] = Field(default=None)
