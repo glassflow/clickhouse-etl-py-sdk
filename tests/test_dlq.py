@@ -170,10 +170,10 @@ class TestDLQ:
 class TestPipelineDLQIntegration:
     """Test cases for Pipeline-DLQ integration."""
 
-    def test_pipeline_dlq_property(self, pipeline_test):
+    def test_pipeline_dlq_property(self, pipeline):
         """Test that Pipeline has a DLQ property."""
-        assert hasattr(pipeline_test, "dlq")
-        assert isinstance(pipeline_test.dlq, DLQ)
+        assert hasattr(pipeline, "dlq")
+        assert isinstance(pipeline.dlq, DLQ)
 
     def test_pipeline_dlq_property_same_url(self):
         """Test that Pipeline DLQ uses the same base URL."""
@@ -183,24 +183,24 @@ class TestPipelineDLQIntegration:
         assert pipeline.http_client.base_url == custom_url
         assert pipeline.dlq.http_client.base_url == custom_url
 
-    def test_pipeline_dlq_consume_integration(self, pipeline_test):
+    def test_pipeline_dlq_consume_integration(self, pipeline):
         """Test Pipeline DLQ consume functionality."""
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = [{"id": "msg1", "content": "test"}]
 
         with patch("httpx.Client.request", return_value=mock_response):
-            result = pipeline_test.dlq.consume(batch_size=10)
+            result = pipeline.dlq.consume(batch_size=10)
 
             assert result == [{"id": "msg1", "content": "test"}]
 
-    def test_pipeline_dlq_state_integration(self, pipeline_test):
+    def test_pipeline_dlq_state_integration(self, pipeline):
         """Test Pipeline DLQ state functionality."""
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.json.return_value = {"total_messages": 10}
 
         with patch("httpx.Client.request", return_value=mock_response):
-            result = pipeline_test.dlq.state()
+            result = pipeline.dlq.state()
 
             assert result == {"total_messages": 10}

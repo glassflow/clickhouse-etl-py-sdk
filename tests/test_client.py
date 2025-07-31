@@ -18,13 +18,13 @@ class TestClient:
         assert client.http_client.base_url == "https://example.com"
 
     def test_client_get_pipeline_success(
-        self, valid_pipeline_config, mock_success_response
+        self, valid_config, mock_success_response
     ):
         """Test successful pipeline retrieval by ID."""
         client = Client()
         pipeline_id = "test-pipeline-id"
 
-        mock_success_response.json.return_value = valid_pipeline_config
+        mock_success_response.json.return_value = valid_config
 
         with patch(
             "httpx.Client.request", return_value=mock_success_response
@@ -125,7 +125,7 @@ class TestClient:
             assert pipelines == []
 
     def test_client_create_pipeline_success(
-        self, valid_pipeline_config, mock_success_response
+        self, valid_config, mock_success_response
     ):
         """Test successful pipeline creation."""
         client = Client()
@@ -133,22 +133,22 @@ class TestClient:
         with patch(
             "httpx.Client.request", return_value=mock_success_response
         ) as mock_request:
-            pipeline = client.create_pipeline(valid_pipeline_config)
+            pipeline = client.create_pipeline(valid_config)
             mock_request.assert_called_once_with(
                 "POST", client.ENDPOINT, json=mock_request.call_args[1]["json"]
             )
             assert isinstance(pipeline, Pipeline)
-            assert pipeline.pipeline_id == valid_pipeline_config["pipeline_id"]
+            assert pipeline.pipeline_id == valid_config["pipeline_id"]
 
     def test_client_create_pipeline_already_exists(
-        self, valid_pipeline_config, mock_forbidden_response
+        self, valid_config, mock_forbidden_response
     ):
         """Test pipeline creation when pipeline already exists."""
         client = Client()
 
         with patch("httpx.Client.request", return_value=mock_forbidden_response):
             with pytest.raises(errors.PipelineAlreadyExistsError):
-                client.create_pipeline(valid_pipeline_config)
+                client.create_pipeline(valid_config)
 
     def test_client_delete_pipeline_success(
         self, mock_success_response, mock_success_get_pipeline
@@ -177,14 +177,14 @@ class TestClient:
                 client.delete_pipeline(pipeline_id)
             assert "not found" in str(exc_info.value)
 
-    def test_pipeline_to_dict(self, valid_pipeline_config):
+    def test_pipeline_to_dict(self, valid_config):
         """Test Pipeline to_dict method."""
-        config = PipelineConfig(**valid_pipeline_config)
+        config = PipelineConfig(**valid_config)
         pipeline = Pipeline(config=config)
 
         pipeline_dict = pipeline.to_dict()
         assert isinstance(pipeline_dict, dict)
-        assert pipeline_dict["pipeline_id"] == valid_pipeline_config["pipeline_id"]
+        assert pipeline_dict["pipeline_id"] == valid_config["pipeline_id"]
 
     def test_pipeline_delete(self, pipeline_from_id, mock_success_response):
         """Test Pipeline delete with explicit pipeline_id."""

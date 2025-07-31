@@ -17,7 +17,7 @@ def mock_track(autouse=True):
 
 
 @pytest.fixture
-def valid_pipeline_config() -> dict:
+def valid_config() -> dict:
     """Fixture for a valid pipeline configuration."""
     return {
         "pipeline_id": "test-pipeline",
@@ -158,7 +158,7 @@ def valid_pipeline_config() -> dict:
 
 
 @pytest.fixture
-def valid_pipeline_config_without_joins() -> dict:
+def valid_config_without_joins() -> dict:
     """Fixture for a valid pipeline configuration without joins."""
     return {
         "pipeline_id": "test-pipeline",
@@ -242,27 +242,25 @@ def valid_pipeline_config_without_joins() -> dict:
 
 
 @pytest.fixture
-def valid_pipeline_config_with_dedup_disabled(valid_pipeline_config) -> dict:
+def valid_config_with_dedup_disabled(valid_config) -> dict:
     """Fixture for a valid pipeline configuration with deduplication disabled."""
-    config = copy.deepcopy(valid_pipeline_config)
+    config = copy.deepcopy(valid_config)
     for idx, _ in enumerate(config["source"]["topics"]):
         config["source"]["topics"][idx]["deduplication"] = None
     return config
 
 
 @pytest.fixture
-def valid_pipeline_config_without_joins_and_dedup_disabled(
-    valid_pipeline_config_without_joins,
-) -> dict:
+def valid_config_without_joins_and_dedup_disabled(valid_config_without_joins) -> dict:
     """Fixture for a valid pipeline configuration without joins and deduplication."""
-    config = copy.deepcopy(valid_pipeline_config_without_joins)
+    config = copy.deepcopy(valid_config_without_joins)
     for idx, _ in enumerate(config["source"]["topics"]):
         config["source"]["topics"][idx]["deduplication"] = None
     return config
 
 
 @pytest.fixture
-def invalid_pipeline_config() -> dict:
+def invalid_config() -> dict:
     """Fixture for an invalid pipeline configuration."""
     return {
         "pipeline_id": "",  # Empty pipeline_id should trigger validation error
@@ -291,62 +289,6 @@ def invalid_pipeline_config() -> dict:
 
 
 @pytest.fixture
-def invalid_join_config() -> dict:
-    """Fixture for a configuration with invalid join configuration."""
-    return {
-        "pipeline_id": "test-pipeline",
-        "source": {
-            "type": "kafka",
-            "connection_params": {
-                "brokers": ["kafka:9092"],
-                "protocol": "SASL_SSL",
-                "mechanism": "SCRAM-SHA-256",
-                "username": "user",
-                "password": "pass",
-            },
-            "topics": [
-                {
-                    "name": "test-topic",
-                    "consumer_group_initial_offset": "earliest",
-                    "schema": {
-                        "type": "json",
-                        "fields": [{"name": "id", "type": "String"}],
-                    },
-                    "deduplication": {
-                        "enabled": True,
-                        "id_field": "id",
-                        "time_window": "1h",
-                        "id_field_type": "string",
-                    },
-                },
-            ],
-        },
-        "join": {
-            "enabled": True,
-            "type": "temporal",
-            "sources": [
-                {
-                    "source_id": "non-existent-topic",  # Invalid source ID
-                    "join_key": "id",
-                    "time_window": "1h",
-                    "orientation": "left",
-                },
-            ],
-        },
-        "sink": {
-            "type": "clickhouse",
-            "host": "clickhouse:8443",
-            "port": "8443",
-            "database": "test",
-            "username": "default",
-            "password": "pass",
-            "table": "test_table",
-            "table_mapping": [],
-        },
-    }
-
-
-@pytest.fixture
 def mock_success_response():
     """Fixture for a successful HTTP response."""
     mock_response = MagicMock(spec=httpx.Response)
@@ -369,12 +311,12 @@ def mock_not_found_response():
 
 
 @pytest.fixture
-def mock_forbidden_response(valid_pipeline_config):
+def mock_forbidden_response(valid_config):
     """Fixture for a 403 Forbidden HTTP response."""
     mock_response = MagicMock(spec=httpx.Response)
     mock_response.status_code = 403
     mock_response.text = (
-        f"Pipeline with id {valid_pipeline_config['pipeline_id']} already active"
+        f"Pipeline with id {valid_config['pipeline_id']} already active"
     )
     mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
         "Forbidden", request=MagicMock(), response=mock_response
@@ -396,29 +338,17 @@ def mock_bad_request_response():
 
 
 @pytest.fixture
-def mock_server_error_response():
-    """Fixture for a 500 Server Error HTTP response."""
-    mock_response = MagicMock(spec=httpx.Response)
-    mock_response.status_code = 500
-    mock_response.text = "Server error"
-    mock_response.raise_for_status.side_effect = httpx.HTTPStatusError(
-        "Server Error", request=MagicMock(), response=mock_response
-    )
-    return mock_response
-
-
-@pytest.fixture
 def mock_connection_error():
     """Fixture for a connection error."""
     return httpx.ConnectError("Connection failed")
 
 
 @pytest.fixture
-def mock_success_get_pipeline(valid_pipeline_config):
+def mock_success_get_pipeline(valid_config):
     """Fixture for a successful GET pipeline response."""
     mock_response = MagicMock(spec=httpx.Response)
     mock_response.status_code = 200
-    mock_response.json.return_value = valid_pipeline_config
+    mock_response.json.return_value = valid_config
     mock_response.raise_for_status.return_value = None
     return mock_response
 
@@ -436,47 +366,9 @@ def dlq_test():
     return DLQ(host="http://localhost:8080", pipeline_id="test-pipeline")
 
 
+# Simplified pipeline fixtures
 @pytest.fixture
-def pipeline_test():
-    """Fixture for a Pipeline instance."""
-    return Pipeline(host="http://localhost", pipeline_id="test-pipeline")
-
-
-@pytest.fixture
-def pipeline_with_config(valid_pipeline_config):
-    """Fixture for a pipeline with valid config."""
-    config = PipelineConfig(**valid_pipeline_config)
+def pipeline(valid_config):
+    """Base pipeline fixture with valid config."""
+    config = PipelineConfig(**valid_config)
     return Pipeline(host="http://localhost:8080", config=config)
-
-
-@pytest.fixture
-def pipeline_with_id():
-    """Fixture for a pipeline with only pipeline_id."""
-    return Pipeline(host="http://localhost:8080", pipeline_id="test-pipeline")
-
-
-@pytest.fixture
-def test_pipeline_method(mock_success_response):
-    """Generic test helper for pipeline methods."""
-
-    def _test_method(
-        pipeline,
-        method_name,
-        expected_method,
-        expected_endpoint,
-        method_kwargs=None,
-        expected_request_kwargs=None,
-    ):
-        method_kwargs = method_kwargs or {}
-        expected_request_kwargs = expected_request_kwargs or {}
-
-        with patch(
-            "httpx.Client.request", return_value=mock_success_response
-        ) as mock_request:
-            result = getattr(pipeline, method_name)(**method_kwargs)
-            mock_request.assert_called_once_with(
-                expected_method, expected_endpoint, **expected_request_kwargs
-            )
-            return result, mock_request
-
-    return _test_method

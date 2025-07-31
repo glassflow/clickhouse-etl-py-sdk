@@ -6,15 +6,15 @@ from glassflow_clickhouse_etl import errors, models
 class TestModels:
     """Tests for the models module."""
 
-    def test_pipeline_config_creation(self, valid_pipeline_config):
-        pipeline_config = models.PipelineConfig(**valid_pipeline_config)
+    def test_pipeline_config_creation(self, valid_config):
+        pipeline_config = models.PipelineConfig(**valid_config)
         assert pipeline_config.pipeline_id == "test-pipeline"
         assert pipeline_config.source.type == "kafka"
         assert pipeline_config.sink.type == "clickhouse"
 
-    def test_invalid_pipeline_config(self, invalid_pipeline_config):
+    def test_invalid_pipeline_config(self, invalid_config):
         with pytest.raises(ValueError):
-            models.PipelineConfig(**invalid_pipeline_config)
+            models.PipelineConfig(**invalid_config)
 
     def test_deduplication_config_enabled_true(self):
         """Test DeduplicationConfig when enabled is True."""
@@ -138,7 +138,7 @@ class TestModels:
         assert config.type is None
         assert config.sources is None
 
-    def test_validate_join_config_source_id_not_found(self, valid_pipeline_config):
+    def test_validate_join_config_source_id_not_found(self, valid_config):
         """Test join config validation when source_id does not exist in topics."""
         join = models.JoinConfig(
             enabled=True,
@@ -151,7 +151,7 @@ class TestModels:
                     orientation=models.JoinOrientation.LEFT,
                 ),
                 models.JoinSourceConfig(
-                    source_id=valid_pipeline_config["source"]["topics"][1]["name"],
+                    source_id=valid_config["source"]["topics"][1]["name"],
                     join_key="id",
                     time_window="1h",
                     orientation=models.JoinOrientation.RIGHT,
@@ -162,26 +162,26 @@ class TestModels:
         with pytest.raises(ValueError) as exc_info:
             models.PipelineConfig(
                 pipeline_id="test-pipeline",
-                source=valid_pipeline_config["source"],
+                source=valid_config["source"],
                 join=join,
-                sink=valid_pipeline_config["sink"],
+                sink=valid_config["sink"],
             )
         assert "does not exist in any topic" in str(exc_info.value)
 
-    def test_validate_join_config_join_key_not_found(self, valid_pipeline_config):
+    def test_validate_join_config_join_key_not_found(self, valid_config):
         """Test join config validation when join_key does not exist in schema."""
         join = models.JoinConfig(
             enabled=True,
             type=models.JoinType.TEMPORAL,
             sources=[
                 models.JoinSourceConfig(
-                    source_id=valid_pipeline_config["source"]["topics"][0]["name"],
+                    source_id=valid_config["source"]["topics"][0]["name"],
                     join_key="non-existent-field",  # This field doesn't exist
                     time_window="1h",
                     orientation=models.JoinOrientation.LEFT,
                 ),
                 models.JoinSourceConfig(
-                    source_id=valid_pipeline_config["source"]["topics"][1]["name"],
+                    source_id=valid_config["source"]["topics"][1]["name"],
                     join_key="id",
                     time_window="1h",
                     orientation=models.JoinOrientation.RIGHT,
@@ -192,17 +192,17 @@ class TestModels:
         with pytest.raises(ValueError) as exc_info:
             models.PipelineConfig(
                 pipeline_id="test-pipeline",
-                source=valid_pipeline_config["source"],
+                source=valid_config["source"],
                 join=join,
-                sink=valid_pipeline_config["sink"],
+                sink=valid_config["sink"],
             )
         assert "does not exist in source" in str(exc_info.value)
         assert "schema" in str(exc_info.value)
 
-    def test_validate_sink_config_source_id_not_found(self, valid_pipeline_config):
+    def test_validate_sink_config_source_id_not_found(self, valid_config):
         """Test sink config validation when source_id does not exist in topics."""
 
-        sink = valid_pipeline_config["sink"]
+        sink = valid_config["sink"]
         sink["table_mapping"] = [
             models.TableMapping(
                 source_id="non-existent-topic",  # This topic doesn't exist
@@ -214,17 +214,17 @@ class TestModels:
         with pytest.raises(ValueError) as exc_info:
             models.PipelineConfig(
                 pipeline_id="test-pipeline",
-                source=valid_pipeline_config["source"],
+                source=valid_config["source"],
                 sink=sink,
             )
         assert "does not exist in any topic" in str(exc_info.value)
 
-    def test_validate_sink_config_field_name_not_found(self, valid_pipeline_config):
+    def test_validate_sink_config_field_name_not_found(self, valid_config):
         """Test sink config validation when field_name does not exist in schema."""
-        sink = valid_pipeline_config["sink"]
+        sink = valid_config["sink"]
         sink["table_mapping"] = [
             models.TableMapping(
-                source_id=valid_pipeline_config["source"]["topics"][0]["name"],
+                source_id=valid_config["source"]["topics"][0]["name"],
                 field_name="non-existent-field",  # This field doesn't exist
                 column_name="id",
                 column_type="String",
@@ -233,7 +233,7 @@ class TestModels:
         with pytest.raises(ValueError) as exc_info:
             models.PipelineConfig(
                 pipeline_id="test-pipeline",
-                source=valid_pipeline_config["source"],
+                source=valid_config["source"],
                 sink=sink,
             )
         assert "does not exist in source" in str(exc_info.value)
@@ -326,25 +326,25 @@ class TestModels:
         assert config.deduplication.enabled is False
 
     def test_validate_data_type_compatibility_invalid_mapping(
-        self, valid_pipeline_config
+        self, valid_config
     ):
         """Test data type compatibility validation with invalid type mappings."""
         # Modify the sink configuration to have an invalid type mapping
-        valid_pipeline_config["sink"]["table_mapping"][0]["column_type"] = (
+        valid_config["sink"]["table_mapping"][0]["column_type"] = (
             models.ClickhouseDataType.INT32
         )
 
         with pytest.raises(errors.InvalidDataTypeMappingError):
-            models.PipelineConfig(**valid_pipeline_config)
+            models.PipelineConfig(**valid_config)
 
-    def test_pipeline_config_pipeline_id_validation(self, valid_pipeline_config):
+    def test_pipeline_config_pipeline_id_validation(self, valid_config):
         """Test PipelineConfig validation for pipeline_id."""
         # Test with valid configuration
         config = models.PipelineConfig(
             pipeline_id="test-pipeline-123a",
-            source=valid_pipeline_config["source"],
-            join=valid_pipeline_config["join"],
-            sink=valid_pipeline_config["sink"],
+            source=valid_config["source"],
+            join=valid_config["join"],
+            sink=valid_config["sink"],
         )
         assert config.pipeline_id == "test-pipeline-123a"
 
@@ -352,9 +352,9 @@ class TestModels:
         with pytest.raises(ValueError) as exc_info:
             models.PipelineConfig(
                 pipeline_id="",
-                source=valid_pipeline_config["source"],
-                join=valid_pipeline_config["join"],
-                sink=valid_pipeline_config["sink"],
+                source=valid_config["source"],
+                join=valid_config["join"],
+                sink=valid_config["sink"],
             )
         assert (
             "pipeline_id cannot be empty" in str(exc_info.value) in str(exc_info.value)
@@ -363,9 +363,9 @@ class TestModels:
         with pytest.raises(ValueError) as exc_info:
             models.PipelineConfig(
                 pipeline_id="Test_Pipeline",
-                source=valid_pipeline_config["source"],
-                join=valid_pipeline_config["join"],
-                sink=valid_pipeline_config["sink"],
+                source=valid_config["source"],
+                join=valid_config["join"],
+                sink=valid_config["sink"],
             )
         assert (
             "pipeline_id can only contain lowercase letters, numbers, and hyphens"
@@ -375,49 +375,49 @@ class TestModels:
         with pytest.raises(ValueError) as exc_info:
             models.PipelineConfig(
                 pipeline_id="test-pipeline-1234567890123456789012345678901234567890",
-                source=valid_pipeline_config["source"],
-                join=valid_pipeline_config["join"],
-                sink=valid_pipeline_config["sink"],
+                source=valid_config["source"],
+                join=valid_config["join"],
+                sink=valid_config["sink"],
             )
         assert "pipeline_id cannot be longer than 40 characters" in str(exc_info.value)
 
         with pytest.raises(ValueError) as exc_info:
             models.PipelineConfig(
                 pipeline_id="-test-pipeline",
-                source=valid_pipeline_config["source"],
-                join=valid_pipeline_config["join"],
-                sink=valid_pipeline_config["sink"],
+                source=valid_config["source"],
+                join=valid_config["join"],
+                sink=valid_config["sink"],
             )
         assert "pipeline_id must start with a lowercase letter" in str(exc_info.value)
 
         with pytest.raises(ValueError) as exc_info:
             models.PipelineConfig(
                 pipeline_id="test-pipeline-",
-                source=valid_pipeline_config["source"],
-                join=valid_pipeline_config["join"],
-                sink=valid_pipeline_config["sink"],
+                source=valid_config["source"],
+                join=valid_config["join"],
+                sink=valid_config["sink"],
             )
         assert "pipeline_id must end with a lowercase letter" in str(exc_info.value)
 
-    def test_pipeline_config_pipeline_name_provided(self, valid_pipeline_config):
+    def test_pipeline_config_pipeline_name_provided(self, valid_config):
         """Test PipelineConfig when pipeline_name is explicitly provided."""
         config = models.PipelineConfig(
             pipeline_id="test-pipeline",
             name="My Custom Pipeline Name",
-            source=valid_pipeline_config["source"],
-            join=valid_pipeline_config["join"],
-            sink=valid_pipeline_config["sink"],
+            source=valid_config["source"],
+            join=valid_config["join"],
+            sink=valid_config["sink"],
         )
         assert config.pipeline_id == "test-pipeline"
         assert config.name == "My Custom Pipeline Name"
 
-    def test_pipeline_config_pipeline_name_not_provided(self, valid_pipeline_config):
+    def test_pipeline_config_pipeline_name_not_provided(self, valid_config):
         """Test PipelineConfig when pipeline_name is not provided (default behavior)."""
         config = models.PipelineConfig(
             pipeline_id="test-pipeline",
-            source=valid_pipeline_config["source"],
-            join=valid_pipeline_config["join"],
-            sink=valid_pipeline_config["sink"],
+            source=valid_config["source"],
+            join=valid_config["join"],
+            sink=valid_config["sink"],
         )
         assert config.pipeline_id == "test-pipeline"
         assert config.name == "Test Pipeline"
