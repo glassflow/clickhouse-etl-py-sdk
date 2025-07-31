@@ -17,9 +17,7 @@ class TestClient:
         assert client.host == "https://example.com"
         assert client.http_client.base_url == "https://example.com"
 
-    def test_client_get_pipeline_success(
-        self, valid_config, mock_success_response
-    ):
+    def test_client_get_pipeline_success(self, valid_config, mock_success_response):
         """Test successful pipeline retrieval by ID."""
         client = Client()
         pipeline_id = "test-pipeline-id"
@@ -124,9 +122,7 @@ class TestClient:
             mock_request.assert_called_once_with("GET", client.ENDPOINT)
             assert pipelines == []
 
-    def test_client_create_pipeline_success(
-        self, valid_config, mock_success_response
-    ):
+    def test_client_create_pipeline_success(self, valid_config, mock_success_response):
         """Test successful pipeline creation."""
         client = Client()
 

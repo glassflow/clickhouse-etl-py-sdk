@@ -89,3 +89,21 @@ select = [
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "-v --cov=src/glassflow_clickhouse_etl --cov-report=term-missing -p no:warnings"
+
+[tool.coverage.run]
+source = ["src/glassflow_clickhouse_etl"]
+data_file = ".coverage"
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]

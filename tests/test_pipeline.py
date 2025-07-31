@@ -252,9 +252,7 @@ class TestPipelineTracking:
             host="http://localhost:8080",
             config=valid_config_without_joins_and_dedup_disabled,
         )
-        pipeline_id = valid_config_without_joins_and_dedup_disabled[
-            "pipeline_id"
-        ]
+        pipeline_id = valid_config_without_joins_and_dedup_disabled["pipeline_id"]
         assert pipeline._tracking_info() == {
             "pipeline_id": pipeline_id,
             "join_enabled": False,
