@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -6,6 +6,7 @@ from glassflow_clickhouse_etl import errors
 from glassflow_clickhouse_etl.client import Client
 from glassflow_clickhouse_etl.models import PipelineConfig
 from glassflow_clickhouse_etl.pipeline import Pipeline
+from tests.data import mock_responses
 
 
 class TestClient:
@@ -47,32 +48,32 @@ class TestClient:
     def test_client_list_pipelines_success_list_format(self):
         """Test successful pipeline listing with list format response."""
         client = Client()
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.raise_for_status.return_value = None
-        mock_response.json.return_value = [
-            {
-                "pipeline_id": "loadtest",
-                "name": "loadtest",
-                "transformation_type": "Deduplication",
-                "created_at": "2025-07-28T11:50:05.478766129Z",
-                "state": "",
-            },
-            {
-                "pipeline_id": "loadtest-4",
-                "name": "loadtest-4",
-                "transformation_type": "Ingest Only",
-                "created_at": "2025-07-28T11:52:53.210108151Z",
-                "state": "",
-            },
-            {
-                "pipeline_id": "loadtest-5",
-                "name": "loadtest-5",
-                "transformation_type": "Join",
-                "created_at": "2025-07-28T11:54:46.270842895Z",
-                "state": "",
-            },
-        ]
+        mock_response = mock_responses.create_mock_response_factory()(
+            status_code=200,
+            json_data=[
+                {
+                    "pipeline_id": "loadtest",
+                    "name": "loadtest",
+                    "transformation_type": "Deduplication",
+                    "created_at": "2025-07-28T11:50:05.478766129Z",
+                    "state": "",
+                },
+                {
+                    "pipeline_id": "loadtest-4",
+                    "name": "loadtest-4",
+                    "transformation_type": "Ingest Only",
+                    "created_at": "2025-07-28T11:52:53.210108151Z",
+                    "state": "",
+                },
+                {
+                    "pipeline_id": "loadtest-5",
+                    "name": "loadtest-5",
+                    "transformation_type": "Join",
+                    "created_at": "2025-07-28T11:54:46.270842895Z",
+                    "state": "",
+                },
+            ],
+        )
 
         with patch("httpx.Client.request", return_value=mock_response) as mock_request:
             pipelines = client.list_pipelines()
@@ -89,18 +90,18 @@ class TestClient:
     def test_client_list_pipeline_success_single_item(self):
         """Test successful pipeline listing with single pipeline in list response."""
         client = Client()
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.raise_for_status.return_value = None
-        mock_response.json.return_value = [
-            {
-                "pipeline_id": "single-pipeline",
-                "name": "single-pipeline",
-                "transformation_type": "Ingest Only",
-                "created_at": "2025-07-28T11:50:05.478766129Z",
-                "state": "",
-            }
-        ]
+        mock_response = mock_responses.create_mock_response_factory()(
+            status_code=200,
+            json_data=[
+                {
+                    "pipeline_id": "single-pipeline",
+                    "name": "single-pipeline",
+                    "transformation_type": "Ingest Only",
+                    "created_at": "2025-07-28T11:50:05.478766129Z",
+                    "state": "",
+                }
+            ],
+        )
 
         with patch("httpx.Client.request", return_value=mock_response) as mock_request:
             pipelines = client.list_pipelines()
@@ -113,9 +114,10 @@ class TestClient:
     def test_client_list_pipelines_empty(self):
         """Test pipeline listing when no pipelines exist."""
         client = Client()
-        mock_response = MagicMock()
-        mock_response.status_code = 404
-        mock_response.raise_for_status.side_effect = None  # Don't raise for 404
+        mock_response = mock_responses.create_mock_response_factory()(
+            status_code=404,
+            json_data=[],
+        )
 
         with patch("httpx.Client.request", return_value=mock_response) as mock_request:
             pipelines = client.list_pipelines()

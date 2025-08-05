@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from glassflow_clickhouse_etl import errors
 from glassflow_clickhouse_etl.models import PipelineConfig, PipelineConfigPatch
 from glassflow_clickhouse_etl.pipeline import Pipeline
+from tests.data import error_scenarios, mock_responses
 
 
 class TestPipelineCreation:
@@ -24,24 +25,11 @@ class TestPipelineCreation:
             )
             assert result == pipeline
 
-    def test_create_already_exists(self, pipeline, mock_forbidden_response):
-        """Test pipeline creation when a pipeline is already active."""
-        with patch("httpx.Client.request", return_value=mock_forbidden_response):
-            with pytest.raises(errors.PipelineAlreadyExistsError):
-                pipeline.create()
-
     def test_create_invalid_config(self, invalid_config):
         """Test pipeline creation with invalid configuration."""
         with pytest.raises((ValueError, ValidationError)) as exc_info:
             Pipeline(host="http://localhost:8080", config=invalid_config)
         assert "pipeline_id cannot be empty" in str(exc_info.value)
-
-    def test_create_bad_request(self, pipeline, mock_bad_request_response):
-        """Test pipeline creation with bad request."""
-        with patch("httpx.Client.request", return_value=mock_bad_request_response):
-            with pytest.raises(errors.ValidationError) as exc_info:
-                pipeline.create()
-            assert "Bad request" in str(exc_info.value)
 
     def test_create_connection_error(self, pipeline, mock_connection_error):
         """Test pipeline creation with connection error."""
@@ -50,6 +38,27 @@ class TestPipelineCreation:
                 pipeline.create()
             assert "Failed to connect to GlassFlow ETL API" in str(exc_info.value)
 
+    @pytest.mark.parametrize(
+        "scenario",
+        error_scenarios.get_http_error_scenarios(),
+        ids=lambda s: s["name"],
+    )
+    def test_create_http_error_scenarios(self, pipeline, scenario):
+        """Test pipeline creation with various HTTP error scenarios."""
+        mock_response = mock_responses.create_mock_response_factory()(
+            status_code=scenario["status_code"],
+            json_data={"message": scenario["text"]},
+            text=scenario["text"],
+        )
+
+        with patch(
+            "httpx.Client.request",
+            side_effect=mock_response.raise_for_status.side_effect,
+        ):
+            with pytest.raises(scenario["expected_error"]) as exc_info:
+                pipeline.create()
+            assert scenario["error_message"] in str(exc_info.value)
+
 
 class TestPipelineLifecycle:
     """Tests for pause, resume, delete operations."""
@@ -57,18 +66,21 @@ class TestPipelineLifecycle:
     @pytest.mark.parametrize(
         "operation,method,endpoint",
         [
+            ("get", "GET", ""),
             ("pause", "POST", "/pause"),
             ("resume", "POST", "/resume"),
             ("delete", "DELETE", ""),
         ],
     )
     def test_lifecycle_operations(
-        self, pipeline, mock_success_response, operation, method, endpoint
+        self, pipeline, mock_success_response, operation, method, endpoint, valid_config
     ):
         """Test common pipeline lifecycle operations."""
         with patch(
             "httpx.Client.request", return_value=mock_success_response
         ) as mock_request:
+            if method == "GET":
+                mock_request.return_value.json.return_value = valid_config
             result = getattr(pipeline, operation)()
             expected_endpoint = f"{pipeline.ENDPOINT}/{pipeline.pipeline_id}{endpoint}"
             mock_request.assert_called_once_with(method, expected_endpoint)
@@ -77,14 +89,14 @@ class TestPipelineLifecycle:
             else:
                 assert result == pipeline
 
-    @pytest.mark.parametrize("operation", ["pause", "resume", "delete"])
+    @pytest.mark.parametrize("operation", ["get", "pause", "resume", "delete"])
     def test_lifecycle_not_found(self, pipeline, mock_not_found_response, operation):
         """Test lifecycle operations when pipeline is not found."""
         with patch("httpx.Client.request", return_value=mock_not_found_response):
             with pytest.raises(errors.PipelineNotFoundError):
                 getattr(pipeline, operation)()
 
-    @pytest.mark.parametrize("operation", ["pause", "resume", "delete"])
+    @pytest.mark.parametrize("operation", ["get", "pause", "resume", "delete"])
     def test_lifecycle_connection_error(
         self, pipeline, mock_connection_error, operation
     ):
@@ -192,11 +204,23 @@ class TestPipelineValidation:
         Pipeline.validate_config(config)
         # No exception should be raised
 
-    def test_validate_config_invalid(self, invalid_config):
-        """Test validation of an invalid pipeline configuration."""
-        with pytest.raises((ValueError, ValidationError)) as exc_info:
-            Pipeline.validate_config(invalid_config)
-        assert "pipeline_id cannot be empty" in str(exc_info.value)
+    @pytest.mark.parametrize(
+        "scenario",
+        error_scenarios.get_validation_error_scenarios(),
+        ids=lambda s: s["name"],
+    )
+    def test_pipeline_id_validation_scenarios(self, scenario):
+        """Test pipeline ID validation with various error scenarios."""
+        # Create a minimal valid config and override pipeline_id
+        from tests.data.pipeline_configs import get_valid_pipeline_config
+
+        config_data = get_valid_pipeline_config()
+        config_data.update(scenario["config"])
+
+        with pytest.raises(scenario["expected_error"]) as exc_info:
+            PipelineConfig(**config_data)
+
+        assert scenario["error_message"] in str(exc_info.value)
 
 
 class TestPipelineTracking:

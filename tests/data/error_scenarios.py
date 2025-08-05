@@ -1,8 +1,8 @@
 """Error scenario test data."""
 
-import httpx
+from pydantic import ValidationError
 
-from glassflow_clickhouse_etl import errors
+from glassflow_clickhouse_etl import errors, models
 
 
 def get_validation_error_scenarios():
@@ -60,7 +60,7 @@ def get_http_error_scenarios():
             "status_code": 403,
             "text": "Pipeline already active",
             "expected_error": errors.PipelineAlreadyExistsError,
-            "error_message": "already active",
+            "error_message": "already exists",
         },
         {
             "name": "bad_request",
@@ -75,30 +75,6 @@ def get_http_error_scenarios():
             "text": "Internal server error",
             "expected_error": errors.ServerError,
             "error_message": "Internal server error",
-        },
-    ]
-
-
-def get_connection_error_scenarios():
-    """Get connection error test scenarios."""
-    return [
-        {
-            "name": "connection_timeout",
-            "exception": httpx.ConnectTimeout("Connection timeout"),
-            "expected_error": errors.ConnectionError,
-            "error_message": "Failed to connect to GlassFlow ETL API",
-        },
-        {
-            "name": "connection_refused",
-            "exception": httpx.ConnectError("Connection refused"),
-            "expected_error": errors.ConnectionError,
-            "error_message": "Failed to connect to GlassFlow ETL API",
-        },
-        {
-            "name": "network_unreachable",
-            "exception": httpx.NetworkError("Network unreachable"),
-            "expected_error": errors.ConnectionError,
-            "error_message": "Failed to connect to GlassFlow ETL API",
         },
     ]
 
@@ -131,52 +107,122 @@ def get_dlq_error_scenarios():
             "error_message": "batch_size must be an integer between 1 and 100",
         },
         {
-            "name": "validation_error_422",
+            "name": "http_error_422_validation_error",
             "status_code": 422,
             "text": "Invalid batch size",
             "expected_error": errors.InvalidBatchSizeError,
             "error_message": "Invalid batch size",
+        },
+        {
+            "name": "http_error_500_server_error",
+            "status_code": 500,
+            "text": "Internal server error",
+            "expected_error": errors.ServerError,
+            "error_message": "Internal server error",
         },
     ]
 
 
 def get_join_validation_error_scenarios():
     """Get join validation error test scenarios."""
+
+    def get_join_with_source_id_not_found(valid_config):
+        join = valid_config["join"].copy()
+        join["sources"][0]["source_id"] = "non-existent-topic"
+        return join
+
+    def get_join_with_join_key_not_found(valid_config):
+        join = valid_config["join"].copy()
+        join["sources"][0]["join_key"] = "non-existent-field"
+        return join
+
+    def get_join_with_same_orientation(valid_config):
+        join = valid_config["join"].copy()
+        join["sources"][0]["orientation"] = models.JoinOrientation.LEFT
+        join["sources"][1]["orientation"] = models.JoinOrientation.LEFT
+        return join
+
+    def get_join_with_only_one_source(valid_config):
+        join = valid_config["join"].copy()
+        join["sources"] = [join["sources"][0]]
+        return join
+
+    def get_join_with_invalid_type(valid_config):
+        join = valid_config["join"].copy()
+        join["type"] = None
+        return join
+
     return [
         {
             "name": "source_id_not_found",
-            "source_id": "non-existent-topic",
+            "join": get_join_with_source_id_not_found,
             "expected_error": ValueError,
             "error_message": "does not exist in any topic",
         },
         {
             "name": "join_key_not_found",
-            "join_key": "non-existent-field",
+            "join": get_join_with_join_key_not_found,
             "expected_error": ValueError,
             "error_message": "does not exist in source",
         },
         {
             "name": "same_orientation",
-            "orientation1": "left",
-            "orientation2": "left",
-            "expected_error": ValueError,
+            "join": get_join_with_same_orientation,
+            "expected_error": ValidationError,
             "error_message": "join sources must have opposite orientations",
+        },
+        {
+            "name": "join_with_only_one_source",
+            "join": get_join_with_only_one_source,
+            "expected_error": ValueError,
+            "error_message": "join must have exactly two sources when enabled",
+        },
+        {
+            "name": "join_with_invalid_type",
+            "join": get_join_with_invalid_type,
+            "expected_error": ValueError,
+            "error_message": "type is required when join is enabled",
         },
     ]
 
 
 def get_sink_validation_error_scenarios():
     """Get sink validation error test scenarios."""
+
+    def get_sink_with_source_id_not_found(valid_config):
+        sink = valid_config["sink"]
+        sink["table_mapping"] = [
+            models.TableMapping(
+                source_id="non-existent-topic",
+                field_name="id",
+                column_name="id",
+                column_type="String",
+            )
+        ]
+        return sink
+
+    def get_sink_with_field_name_not_found(valid_config):
+        sink = valid_config["sink"]
+        sink["table_mapping"] = [
+            models.TableMapping(
+                source_id=valid_config["source"]["topics"][0]["name"],
+                field_name="non-existent-field",
+                column_name="id",
+                column_type="String",
+            )
+        ]
+        return sink
+
     return [
         {
             "name": "source_id_not_found",
-            "source_id": "non-existent-topic",
+            "sink": get_sink_with_source_id_not_found,
             "expected_error": ValueError,
             "error_message": "does not exist in any topic",
         },
         {
             "name": "field_name_not_found",
-            "field_name": "non-existent-field",
+            "sink": get_sink_with_field_name_not_found,
             "expected_error": ValueError,
             "error_message": "does not exist in source",
         },
