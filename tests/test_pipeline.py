@@ -32,6 +32,17 @@ class TestPipelineCreation:
             Pipeline(host="http://localhost:8080", config=invalid_config)
         assert "pipeline_id cannot be empty" in str(exc_info.value)
 
+    def test_create_value_error(self, valid_config):
+        """Test pipeline creation with value error."""
+        with pytest.raises(ValueError):
+            Pipeline(host="http://localhost:8080")
+
+        with pytest.raises(ValueError):
+            Pipeline(config=valid_config, pipeline_id="test-pipeline")
+
+        with pytest.raises(ValueError):
+            Pipeline(host="http://localhost:8080", pipeline_id="test-pipeline").create()
+
     def test_create_connection_error(self, pipeline, mock_connection_error):
         """Test pipeline creation with connection error."""
         with patch("httpx.Client.request", side_effect=mock_connection_error):
