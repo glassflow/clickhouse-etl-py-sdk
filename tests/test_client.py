@@ -148,6 +148,44 @@ class TestClient:
             with pytest.raises(errors.PipelineAlreadyExistsError):
                 client.create_pipeline(valid_config)
 
+    def test_client_create_pipeline_from_yaml_success(self, mock_success_response):
+        """Test pipeline creation from YAML file."""
+        client = Client()
+        with patch(
+            "httpx.Client.request", return_value=mock_success_response
+        ) as mock_request:
+            client.create_pipeline(
+                pipeline_config_yaml_path="tests/data/valid_pipeline.yaml"
+            )
+            mock_request.assert_called_once_with(
+                "POST", client.ENDPOINT, json=mock_request.call_args[1]["json"]
+            )
+
+    def test_client_create_pipeline_from_json_success(self, mock_success_response):
+        """Test pipeline creation from JSON file."""
+        client = Client()
+        with patch(
+            "httpx.Client.request", return_value=mock_success_response
+        ) as mock_request:
+            client.create_pipeline(
+                pipeline_config_json_path="tests/data/valid_pipeline.json"
+            )
+            mock_request.assert_called_once_with(
+                "POST", client.ENDPOINT, json=mock_request.call_args[1]["json"]
+            )
+
+    def test_client_create_pipeline_value_error(self, valid_config):
+        """Test pipeline creation with invalid configuration."""
+        client = Client()
+        with pytest.raises(ValueError):
+            client.create_pipeline(
+                pipeline_config=valid_config,
+                pipeline_config_yaml_path="tests/data/valid_pipeline.yaml",
+                pipeline_config_json_path="tests/data/valid_pipeline.json",
+            )
+        with pytest.raises(ValueError):
+            client.create_pipeline()
+
     def test_client_delete_pipeline_success(
         self, mock_success_response, mock_success_get_pipeline
     ):

@@ -1,3 +1,4 @@
+import os
 from unittest.mock import patch
 
 import pytest
@@ -286,3 +287,36 @@ class TestPipelineTracking:
             "source_root_ca_provided": True,
             "source_skip_auth": False,
         }
+
+
+class TestPipelineIO:
+    """Tests for file operations."""
+
+    def test_to_yaml(self, pipeline):
+        """Test pipeline to YAML file."""
+        pipeline.to_yaml("tests/data/valid_pipeline.yaml")
+        assert os.path.exists("tests/data/valid_pipeline.yaml")
+
+    def test_to_json(self, pipeline):
+        """Test pipeline to JSON file."""
+        pipeline.to_json("tests/data/valid_pipeline.json")
+        assert os.path.exists("tests/data/valid_pipeline.json")
+
+    def test_from_yaml(self, pipeline):
+        """Test pipeline from YAML file."""
+        pipeline = Pipeline.from_yaml("tests/data/valid_pipeline.yaml")
+        assert pipeline.pipeline_id == "test-pipeline"
+
+    def test_from_json(self, pipeline):
+        """Test pipeline from JSON file."""
+        pipeline = Pipeline.from_json("tests/data/valid_pipeline.json")
+        assert pipeline.pipeline_id == "test-pipeline"
+
+    def test_to_dict(self, pipeline):
+        """Test pipeline to dictionary."""
+        assert pipeline.to_dict() == pipeline.config.model_dump(
+            mode="json", by_alias=True
+        )
+
+        pipeline = Pipeline(host="http://localhost:8080", pipeline_id="test-pipeline")
+        assert pipeline.to_dict() == {"pipeline_id": "test-pipeline"}

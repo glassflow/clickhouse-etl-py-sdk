@@ -60,11 +60,20 @@ class Client(APIClient):
             self._track_event("PipelineListError", error_type="InternalServerError")
             raise e
 
-    def create_pipeline(self, pipeline_config: dict[str, Any] | models.PipelineConfig):
+    def create_pipeline(
+        self,
+        pipeline_config: dict[str, Any] | models.PipelineConfig | None = None,
+        pipeline_config_yaml_path: str | None = None,
+        pipeline_config_json_path: str | None = None,
+    ):
         """Creates a new pipeline with the given config.
 
         Args:
             pipeline_config: Dictionary or PipelineConfig object containing
+                the pipeline configuration
+            pipeline_config_yaml_path: Path to the YAML file containing
+                the pipeline configuration
+            pipeline_config_json_path: Path to the JSON file containing
                 the pipeline configuration
 
         Returns:
@@ -75,7 +84,28 @@ class Client(APIClient):
             PipelineInvalidConfigurationError: If configuration is invalid
             APIError: If the API request fails
         """
-        return Pipeline(config=pipeline_config, host=self.host).create()
+        if pipeline_config is None:
+            if pipeline_config_yaml_path is None and pipeline_config_json_path is None:
+                raise ValueError(
+                    "Either pipeline_config or pipeline_config_yaml_path or "
+                    "pipeline_config_json_path must be provided"
+                )
+            if pipeline_config_yaml_path is not None:
+                pipeline = Pipeline.from_yaml(pipeline_config_yaml_path, host=self.host)
+            elif pipeline_config_json_path is not None:
+                pipeline = Pipeline.from_json(pipeline_config_json_path, host=self.host)
+        else:
+            if (
+                pipeline_config_yaml_path is not None
+                or pipeline_config_json_path is not None
+            ):
+                raise ValueError(
+                    "Either pipeline_config or pipeline_config_yaml_path or "
+                    "pipeline_config_json_path must be provided"
+                )
+            pipeline = Pipeline(config=pipeline_config, host=self.host)
+
+        return pipeline.create()
 
     def delete_pipeline(self, pipeline_id: str) -> None:
         """Deletes the pipeline with the given ID.

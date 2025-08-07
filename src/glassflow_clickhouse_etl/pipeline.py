@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 import warnings
 from typing import Any
 
+import yaml
 from httpx._models import Response
 from pydantic import ValidationError
 
@@ -227,6 +229,54 @@ class Pipeline(APIClient):
             by_alias=True,
             exclude_none=True,
         )
+
+    def to_yaml(self, yaml_path: str) -> None:
+        """Save the pipeline configuration to a YAML file.
+
+        Args:
+            yaml_path: Path to the YAML file
+        """
+        with open(yaml_path, "w") as f:
+            yaml.dump(self.to_dict(), f, default_flow_style=False)
+
+    def to_json(self, json_path: str) -> None:
+        """Save the pipeline configuration to a JSON file.
+
+        Args:
+            json_path: Path to the JSON file
+        """
+        with open(json_path, "w") as f:
+            json.dump(self.to_dict(), f, indent=4)
+
+    @classmethod
+    def from_yaml(cls, yaml_path: str, host: str | None = None) -> Pipeline:
+        """Create a pipeline from a YAML file.
+
+        Args:
+            yaml_path: Path to the YAML file
+            host: GlassFlow API host
+
+        Returns:
+            Pipeline: A Pipeline instance for the created pipeline
+        """
+        with open(yaml_path, "r") as f:
+            config = yaml.safe_load(f)
+        return cls(config=config, host=host)
+
+    @classmethod
+    def from_json(cls, json_path: str, host: str | None = None) -> Pipeline:
+        """Create a pipeline from a JSON file.
+
+        Args:
+            json_path: Path to the JSON file
+            host: GlassFlow API host
+
+        Returns:
+            Pipeline: A Pipeline instance for the created pipeline
+        """
+        with open(json_path, "r") as f:
+            config = json.load(f)
+        return cls(config=config, host=host)
 
     @staticmethod
     def validate_config(config: dict[str, Any]) -> bool:
