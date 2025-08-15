@@ -96,6 +96,7 @@
         "provider": "aiven",
         "host": "<host>",
         "port": "12753",
+        "http_port": "12754",
         "database": "default",
         "username": "<user>",
         "password": "<password>",

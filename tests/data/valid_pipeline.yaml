@@ -18,7 +18,8 @@ sink:
   max_batch_size: 1
   max_delay_time: 10m
   password: <password>
-  port: '12753'
+  port: "12753"
+  http_port: "12754"
   provider: aiven
   secure: true
   table: user_orders

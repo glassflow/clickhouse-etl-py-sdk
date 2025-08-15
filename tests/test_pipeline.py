@@ -1,4 +1,5 @@
 import os
+import tempfile
 from unittest.mock import patch
 
 import pytest
@@ -303,13 +304,33 @@ class TestPipelineIO:
 
     def test_to_yaml(self, pipeline):
         """Test pipeline to YAML file."""
-        pipeline.to_yaml("tests/data/valid_pipeline.yaml")
-        assert os.path.exists("tests/data/valid_pipeline.yaml")
+        # Use a temporary file that will be automatically cleaned up
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".yaml", delete=False
+        ) as temp_file:
+            temp_path = temp_file.name
+        try:
+            pipeline.to_yaml(temp_path)
+            assert os.path.exists(temp_path)
+        finally:
+            # Clean up the temporary file
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
 
     def test_to_json(self, pipeline):
         """Test pipeline to JSON file."""
-        pipeline.to_json("tests/data/valid_pipeline.json")
-        assert os.path.exists("tests/data/valid_pipeline.json")
+        # Use a temporary file that will be automatically cleaned up
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False
+        ) as temp_file:
+            temp_path = temp_file.name
+        try:
+            pipeline.to_json(temp_path)
+            assert os.path.exists(temp_path)
+        finally:
+            # Clean up the temporary file
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
 
     def test_from_yaml(self, pipeline):
         """Test pipeline from YAML file."""

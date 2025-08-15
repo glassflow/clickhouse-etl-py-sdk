@@ -22,6 +22,7 @@ class SinkConfig(BaseModel):
     provider: Optional[str] = Field(default=None)
     host: str
     port: str
+    http_port: str
     database: str
     username: str
     password: str
@@ -36,6 +37,7 @@ class SinkConfigPatch(BaseModel):
     provider: Optional[str] = Field(default=None)
     host: Optional[str] = Field(default=None)
     port: Optional[str] = Field(default=None)
+    http_port: Optional[str] = Field(default=None)
     database: Optional[str] = Field(default=None)
     username: Optional[str] = Field(default=None)
     password: Optional[str] = Field(default=None)
