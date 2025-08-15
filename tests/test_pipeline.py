@@ -6,7 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from glassflow_clickhouse_etl import errors
-from glassflow_clickhouse_etl.models import PipelineConfig
+from glassflow_clickhouse_etl.models import PipelineConfig, PipelineConfigPatch
 from glassflow_clickhouse_etl.pipeline import Pipeline
 from tests.data import error_scenarios, mock_responses
 
@@ -80,6 +80,8 @@ class TestPipelineLifecycle:
         "operation,method,endpoint",
         [
             ("get", "GET", ""),
+            ("pause", "POST", "/pause"),
+            ("resume", "POST", "/resume"),
             ("delete", "DELETE", ""),
         ],
     )
@@ -100,14 +102,14 @@ class TestPipelineLifecycle:
             else:
                 assert result == pipeline
 
-    @pytest.mark.parametrize("operation", ["get", "delete"])
+    @pytest.mark.parametrize("operation", ["get", "pause", "resume", "delete"])
     def test_lifecycle_not_found(self, pipeline, mock_not_found_response, operation):
         """Test lifecycle operations when pipeline is not found."""
         with patch("httpx.Client.request", return_value=mock_not_found_response):
             with pytest.raises(errors.PipelineNotFoundError):
                 getattr(pipeline, operation)()
 
-    @pytest.mark.parametrize("operation", ["get", "delete"])
+    @pytest.mark.parametrize("operation", ["get", "pause", "resume", "delete"])
     def test_lifecycle_connection_error(
         self, pipeline, mock_connection_error, operation
     ):
@@ -153,57 +155,57 @@ class TestPipelineModification:
 
             # After rename, the config should be loaded and name should be updated
 
-    # def test_update_success(self, pipeline, mock_success_response):
-    #     """Test successful pipeline update."""
-    #     config = pipeline.config.model_dump(mode="json", by_alias=True)
-    #     patch_data = {"sink": config["sink"]}
-    #     updated_config = config.copy()
-    #     updated_config["sink"]["table"] = "updated_table"
-    #     mock_success_response.json.return_value = updated_config
+    def test_update_success(self, pipeline, mock_success_response):
+        """Test successful pipeline update."""
+        config = pipeline.config.model_dump(mode="json", by_alias=True)
+        patch_data = {"sink": config["sink"]}
+        updated_config = config.copy()
+        updated_config["sink"]["table"] = "updated_table"
+        mock_success_response.json.return_value = updated_config
 
-    #     with patch(
-    #         "httpx.Client.request", return_value=mock_success_response
-    #     ) as mock_request:
-    #         pipeline.update(patch_data)
-    #         mock_request.assert_called_with(
-    #             "UPDATE",
-    #             f"{pipeline.ENDPOINT}/{pipeline.pipeline_id}",
-    #             json=PipelineConfigPatch(**patch_data).model_dump(
-    #                 mode="json", by_alias=True, exclude_none=True
-    #             ),
-    #         )
-    #         assert pipeline.config.sink.table == "updated_table"
+        with patch(
+            "httpx.Client.request", return_value=mock_success_response
+        ) as mock_request:
+            pipeline.update(patch_data)
+            mock_request.assert_called_with(
+                "UPDATE",
+                f"{pipeline.ENDPOINT}/{pipeline.pipeline_id}",
+                json=PipelineConfigPatch(**patch_data).model_dump(
+                    mode="json", by_alias=True, exclude_none=True
+                ),
+            )
+            assert pipeline.config.sink.table == "updated_table"
 
-    # def test_update_not_found(self, pipeline, mock_not_found_response):
-    #     """Test pipeline update when pipeline is not found."""
-    #     config = pipeline.config.model_dump(mode="json", by_alias=True)
-    #     patch_data = {"sink": config["sink"]}
+    def test_update_not_found(self, pipeline, mock_not_found_response):
+        """Test pipeline update when pipeline is not found."""
+        config = pipeline.config.model_dump(mode="json", by_alias=True)
+        patch_data = {"sink": config["sink"]}
 
-    #     with patch("httpx.Client.request", return_value=mock_not_found_response):
-    #         with pytest.raises(errors.PipelineNotFoundError):
-    #             pipeline.update(patch_data)
+        with patch("httpx.Client.request", return_value=mock_not_found_response):
+            with pytest.raises(errors.PipelineNotFoundError):
+                pipeline.update(patch_data)
 
-    # def test_update_invalid_config(self, pipeline, mock_bad_request_response):
-    #     """Test pipeline update with invalid configuration."""
-    #     patch_data = {"sink": {"invalid": "data"}}
-    #     mock_bad_request_response.json.return_value = {
-    #         "message": "Invalid configuration"
-    #     }
-    #     mock_bad_request_response.status_code = 422
+    def test_update_invalid_config(self, pipeline, mock_bad_request_response):
+        """Test pipeline update with invalid configuration."""
+        patch_data = {"sink": {"invalid": "data"}}
+        mock_bad_request_response.json.return_value = {
+            "message": "Invalid configuration"
+        }
+        mock_bad_request_response.status_code = 422
 
-    #     with patch("httpx.Client.request", return_value=mock_bad_request_response):
-    #         with pytest.raises(errors.PipelineInvalidConfigurationError):
-    #             pipeline.update(patch_data)
+        with patch("httpx.Client.request", return_value=mock_bad_request_response):
+            with pytest.raises(errors.PipelineInvalidConfigurationError):
+                pipeline.update(patch_data)
 
-    # def test_update_connection_error(self, pipeline, mock_connection_error):
-    #     """Test pipeline update with connection error."""
-    #     config = pipeline.config.model_dump(mode="json", by_alias=True)
-    #     patch_data = {"sink": config["sink"]}
+    def test_update_connection_error(self, pipeline, mock_connection_error):
+        """Test pipeline update with connection error."""
+        config = pipeline.config.model_dump(mode="json", by_alias=True)
+        patch_data = {"sink": config["sink"]}
 
-    #     with patch("httpx.Client.request", side_effect=mock_connection_error):
-    #         with pytest.raises(errors.ConnectionError) as exc_info:
-    #             pipeline.update(patch_data)
-    #         assert "Failed to connect to GlassFlow ETL API" in str(exc_info.value)
+        with patch("httpx.Client.request", side_effect=mock_connection_error):
+            with pytest.raises(errors.ConnectionError) as exc_info:
+                pipeline.update(patch_data)
+            assert "Failed to connect to GlassFlow ETL API" in str(exc_info.value)
 
 
 class TestPipelineValidation:
