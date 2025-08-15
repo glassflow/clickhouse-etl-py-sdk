@@ -141,39 +141,6 @@ class Pipeline(APIClient):
             APIError: If the API request fails
         """
         raise NotImplementedError("Updating is not implemented")
-        # warnings.warn(
-        #     "This operation will pause the pipeline and update the pipeline once all "
-        #     "the events from internal queues have been processed",
-        #     category=UserWarning,
-        #     stacklevel=2,
-        # )
-
-        # if isinstance(config_patch, dict):
-        #     # Validate the config patch
-        #     config_patch = models.PipelineConfigPatch.model_validate(
-        #         config_patch
-        #     ).model_dump(
-        #         mode="json",
-        #         by_alias=True,
-        #         exclude_none=True,
-        #     )
-
-        # # Make sure we have the latest config from GlassFlow
-        # self.get()
-
-        # # Validate the merged config
-        # models.PipelineConfig.model_validate(
-        #     self.config.model_copy(update=config_patch)
-        # )
-
-        # response = self._request(
-        #     "UPDATE",
-        #     f"{self.ENDPOINT}/{self.pipeline_id}",
-        #     json=config_patch,
-        #     event_name="PipelineUpdated",
-        # )
-        # self.config = models.PipelineConfig.model_validate(response.json())
-        # return self
 
     def delete(self, terminate: bool = True) -> None:
         """Deletes the pipeline with the given ID.
@@ -205,9 +172,6 @@ class Pipeline(APIClient):
             APIError: If the API request fails
         """
         raise NotImplementedError("Pausing is not implemented")
-        # endpoint = f"{self.ENDPOINT}/{self.pipeline_id}/pause"
-        # self._request("POST", endpoint, event_name="PipelinePaused")
-        # return self
 
     def resume(self) -> Pipeline:
         """Resumes the pipeline with the given ID.
@@ -220,9 +184,6 @@ class Pipeline(APIClient):
             APIError: If the API request fails
         """
         raise NotImplementedError("Resuming is not implemented")
-        # endpoint = f"{self.ENDPOINT}/{self.pipeline_id}/resume"
-        # self._request("POST", endpoint, event_name="PipelineResumed")
-        # return self
 
     def to_dict(self) -> dict[str, Any]:
         """Convert the pipeline configuration to a dictionary.
