@@ -77,14 +77,21 @@ class TestPipelineLifecycle:
     """Tests for pause, resume, delete operations."""
 
     @pytest.mark.parametrize(
-        "operation,method,endpoint",
+        "operation,method,endpoint,params",
         [
-            ("get", "GET", ""),
-            ("delete", "DELETE", ""),
+            ("get", "GET", "", {}),
+            ("delete", "DELETE", "/terminate", {"terminate": True}),
         ],
     )
     def test_lifecycle_operations(
-        self, pipeline, mock_success_response, operation, method, endpoint, valid_config
+        self,
+        pipeline,
+        mock_success_response,
+        operation,
+        method,
+        endpoint,
+        params,
+        valid_config,
     ):
         """Test common pipeline lifecycle operations."""
         with patch(
@@ -92,7 +99,7 @@ class TestPipelineLifecycle:
         ) as mock_request:
             if method == "GET":
                 mock_request.return_value.json.return_value = valid_config
-            result = getattr(pipeline, operation)()
+            result = getattr(pipeline, operation)(**params)
             expected_endpoint = f"{pipeline.ENDPOINT}/{pipeline.pipeline_id}{endpoint}"
             mock_request.assert_called_once_with(method, expected_endpoint)
             if operation == "delete":

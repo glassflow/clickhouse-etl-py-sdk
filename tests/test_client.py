@@ -197,10 +197,10 @@ class TestClient:
             with patch(
                 "httpx.Client.request", return_value=mock_success_response
             ) as mock_delete_request:
-                client.delete_pipeline(pipeline_id)
+                client.delete_pipeline(pipeline_id, terminate=True)
                 pipeline_get.assert_called_once_with()
                 mock_delete_request.assert_called_once_with(
-                    "DELETE", f"{client.ENDPOINT}/{pipeline_id}"
+                    "DELETE", f"{client.ENDPOINT}/{pipeline_id}/terminate"
                 )
 
     def test_client_delete_pipeline_not_found(self, mock_not_found_response):
@@ -227,7 +227,8 @@ class TestClient:
         with patch(
             "httpx.Client.request", return_value=mock_success_response
         ) as mock_request:
-            pipeline_from_id.delete()
+            pipeline_from_id.delete(terminate=True)
             mock_request.assert_called_once_with(
-                "DELETE", f"{pipeline_from_id.ENDPOINT}/{pipeline_from_id.pipeline_id}"
+                "DELETE",
+                f"{pipeline_from_id.ENDPOINT}/{pipeline_from_id.pipeline_id}/terminate",
             )

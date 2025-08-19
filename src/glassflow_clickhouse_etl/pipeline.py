@@ -158,7 +158,7 @@ class Pipeline(APIClient):
 
         if self.config is None:
             self.get()
-        endpoint = f"{self.ENDPOINT}/{self.pipeline_id}"
+        endpoint = f"{self.ENDPOINT}/{self.pipeline_id}/terminate"
         self._request("DELETE", endpoint, event_name="PipelineDeleted")
 
     def pause(self) -> Pipeline:
