@@ -67,7 +67,9 @@ class TestPipelineConfig:
                 join=valid_config["join"],
                 sink=valid_config["sink"],
             )
-        assert "pipeline_id must start with a lowercase letter" in str(exc_info.value)
+        assert "pipeline_id must start with a lowercase alphanumeric" in str(
+            exc_info.value
+        )
 
         with pytest.raises(ValueError) as exc_info:
             models.PipelineConfig(
@@ -76,7 +78,9 @@ class TestPipelineConfig:
                 join=valid_config["join"],
                 sink=valid_config["sink"],
             )
-        assert "pipeline_id must end with a lowercase letter" in str(exc_info.value)
+        assert "pipeline_id must end with a lowercase alphanumeric" in str(
+            exc_info.value
+        )
 
     def test_pipeline_config_pipeline_name_provided(self, valid_config):
         """Test PipelineConfig when pipeline_name is explicitly provided."""

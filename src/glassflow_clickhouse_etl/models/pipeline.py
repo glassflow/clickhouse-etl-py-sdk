@@ -28,10 +28,10 @@ class PipelineConfig(BaseModel):
             raise ValueError(
                 "pipeline_id can only contain lowercase letters, numbers, and hyphens"
             )
-        if not re.match(r"^[a-z]", v):
-            raise ValueError("pipeline_id must start with a lowercase letter")
-        if not re.match(r".*[a-z]$", v):
-            raise ValueError("pipeline_id must end with a lowercase letter")
+        if not re.match(r"^[a-z0-9]", v):
+            raise ValueError("pipeline_id must start with a lowercase alphanumeric")
+        if not re.match(r".*[a-z0-9]$", v):
+            raise ValueError("pipeline_id must end with a lowercase alphanumeric")
         return v
 
     @model_validator(mode="after")

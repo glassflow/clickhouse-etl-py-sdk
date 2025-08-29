@@ -34,13 +34,13 @@ def get_validation_error_scenarios():
             "name": "pipeline_id_starts_with_hyphen",
             "config": {"pipeline_id": "-test-pipeline"},
             "expected_error": ValueError,
-            "error_message": "pipeline_id must start with a lowercase letter",
+            "error_message": "pipeline_id must start with a lowercase alphanumeric",
         },
         {
             "name": "pipeline_id_ends_with_hyphen",
             "config": {"pipeline_id": "test-pipeline-"},
             "expected_error": ValueError,
-            "error_message": "pipeline_id must end with a lowercase letter",
+            "error_message": "pipeline_id must end with a lowercase alphanumeric",
         },
     ]
 
