@@ -40,7 +40,9 @@ class DLQ(APIClient):
                 "GET", f"{self.endpoint}/consume", params={"batch_size": batch_size}
             )
             response.raise_for_status()
-            return response.json()
+            if response.status_code != 204:
+                return response.json()
+            return []
         except errors.UnprocessableContentError as e:
             raise InvalidBatchSizeError(
                 f"Invalid batch size: batch size should be larger than 1 "
