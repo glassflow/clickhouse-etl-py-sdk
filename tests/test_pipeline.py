@@ -303,3 +303,28 @@ class TestPipelineIO:
 
         pipeline = Pipeline(host="http://localhost:8080", pipeline_id="test-pipeline")
         assert pipeline.to_dict() == {"pipeline_id": "test-pipeline"}
+
+
+class TestPipelineHealth:
+    """Tests for pipeline health endpoint."""
+
+    def test_health_success(self, pipeline, mock_success_response):
+        """Test successful health fetch returns expected payload."""
+        expected = {
+            "pipeline_id": "test-pipeline",
+            "pipeline_name": "Test Pipeline",
+            "overall_status": "Running",
+            "created_at": "2025-08-31T16:05:09.163872763Z",
+            "updated_at": "2025-08-31T16:05:10.638243216Z",
+        }
+        mock_success_response.json.return_value = expected
+
+        with patch(
+            "httpx.Client.request", return_value=mock_success_response
+        ) as mock_request:
+            result = pipeline.health()
+            mock_request.assert_called_once_with(
+                "GET",
+                f"{pipeline.ENDPOINT}/{pipeline.pipeline_id}/health",
+            )
+            assert result == expected

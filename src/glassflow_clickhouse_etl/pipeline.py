@@ -185,6 +185,14 @@ class Pipeline(APIClient):
         """
         raise NotImplementedError("Resuming is not implemented")
 
+    def health(self) -> dict[str, Any]:
+        """Get the health of the pipeline.
+
+        Returns:
+            dict: Pipeline health
+        """
+        return self._request("GET", f"{self.ENDPOINT}/{self.pipeline_id}/health", event_name="PipelineHealth").json()
+    
     def to_dict(self) -> dict[str, Any]:
         """Convert the pipeline configuration to a dictionary.
 
