@@ -22,6 +22,7 @@ class SinkConfig(BaseModel):
     provider: Optional[str] = Field(default=None)
     host: str
     port: str
+    http_port: Optional[str] = Field(default=None)
     database: str
     username: str
     password: str
@@ -31,3 +32,18 @@ class SinkConfig(BaseModel):
     max_delay_time: str = Field(default="10m")
     table: str
     table_mapping: List[TableMapping]
+
+
+class SinkConfigPatch(BaseModel):
+    provider: Optional[str] = Field(default=None)
+    host: Optional[str] = Field(default=None)
+    port: Optional[str] = Field(default=None)
+    http_port: Optional[str] = Field(default=None)
+    database: Optional[str] = Field(default=None)
+    username: Optional[str] = Field(default=None)
+    password: Optional[str] = Field(default=None)
+    secure: Optional[bool] = Field(default=None)
+    max_batch_size: Optional[int] = Field(default=None)
+    max_delay_time: Optional[str] = Field(default=None)
+    table: Optional[str] = Field(default=None)
+    table_mapping: Optional[List[TableMapping]] = Field(default=None)
