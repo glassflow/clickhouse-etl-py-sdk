@@ -1,16 +1,18 @@
+import re
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from ..errors import InvalidDataTypeMappingError
 from .data_types import kafka_to_clickhouse_data_type_mappings
-from .join import JoinConfig
-from .sink import SinkConfig
-from .source import SourceConfig
+from .join import JoinConfig, JoinConfigPatch
+from .sink import SinkConfig, SinkConfigPatch
+from .source import SourceConfig, SourceConfigPatch
 
 
 class PipelineConfig(BaseModel):
     pipeline_id: str
+    name: Optional[str] = Field(default=None)
     source: SourceConfig
     join: Optional[JoinConfig] = Field(default=JoinConfig())
     sink: SinkConfig
@@ -20,7 +22,27 @@ class PipelineConfig(BaseModel):
     def validate_pipeline_id(cls, v: str) -> str:
         if not v:
             raise ValueError("pipeline_id cannot be empty")
+        if len(v) > 40:
+            raise ValueError("pipeline_id cannot be longer than 40 characters")
+        if not re.match(r"^[a-z0-9-]+$", v):
+            raise ValueError(
+                "pipeline_id can only contain lowercase letters, numbers, and hyphens"
+            )
+        if not re.match(r"^[a-z0-9]", v):
+            raise ValueError("pipeline_id must start with a lowercase alphanumeric")
+        if not re.match(r".*[a-z0-9]$", v):
+            raise ValueError("pipeline_id must end with a lowercase alphanumeric")
         return v
+
+    @model_validator(mode="after")
+    def set_pipeline_name(self) -> "PipelineConfig":
+        """
+        If name is not provided, use the pipeline_id and replace hyphens
+        with spaces.
+        """
+        if self.name is None:
+            self.name = self.pipeline_id.replace("-", " ").title()
+        return self
 
     @field_validator("join")
     @classmethod
@@ -154,3 +176,10 @@ class PipelineConfig(BaseModel):
                 )
 
         return v
+
+
+class PipelineConfigPatch(BaseModel):
+    name: Optional[str] = Field(default=None)
+    source: Optional[SourceConfigPatch] = Field(default=None)
+    join: Optional[JoinConfigPatch] = Field(default=None)
+    sink: Optional[SinkConfigPatch] = Field(default=None)
