@@ -39,7 +39,7 @@ class DeduplicationConfig(BaseModel):
     id_field_type: Optional[KafkaDataType] = Field(default=None)
     time_window: Optional[str] = Field(default=None)
 
-    @model_validator(mode='before')
+    @model_validator(mode="before")
     @classmethod
     def validate_deduplication_fields(cls, values):
         """Validate deduplication fields based on enabled status."""

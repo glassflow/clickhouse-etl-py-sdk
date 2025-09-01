@@ -191,8 +191,12 @@ class Pipeline(APIClient):
         Returns:
             dict: Pipeline health
         """
-        return self._request("GET", f"{self.ENDPOINT}/{self.pipeline_id}/health", event_name="PipelineHealth").json()
-    
+        return self._request(
+            "GET",
+            f"{self.ENDPOINT}/{self.pipeline_id}/health",
+            event_name="PipelineHealth",
+        ).json()
+
     def to_dict(self) -> dict[str, Any]:
         """Convert the pipeline configuration to a dictionary.
 

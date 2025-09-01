@@ -48,8 +48,8 @@ class TestDeduplicationConfig:
         # All fields should be optional when enabled is False
         config = models.DeduplicationConfig(
             enabled=False,
-            id_field='',
-            id_field_type='',
+            id_field="",
+            id_field_type="",
             time_window=None,
         )
         assert config.enabled is False
