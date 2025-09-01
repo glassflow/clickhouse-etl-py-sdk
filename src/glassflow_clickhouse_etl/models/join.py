@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from pydantic import BaseModel, ValidationInfo, field_validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 from .base import CaseInsensitiveStrEnum
 
@@ -63,3 +63,17 @@ class JoinConfig(BaseModel):
         if info.data.get("enabled", False) and not v:
             raise ValueError("type is required when join is enabled")
         return v
+
+
+class JoinSourceConfigPatch(BaseModel):
+    source_id: Optional[str] = Field(default=None)
+    join_key: Optional[str] = Field(default=None)
+    time_window: Optional[str] = Field(default=None)
+    orientation: Optional[JoinOrientation] = Field(default=None)
+
+
+class JoinConfigPatch(BaseModel):
+    enabled: Optional[bool] = Field(default=None)
+    type: Optional[JoinType] = Field(default=None)
+    # TODO: How to patch an element in a list?
+    sources: Optional[List[JoinSourceConfig]] = Field(default=None)
