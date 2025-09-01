@@ -22,7 +22,7 @@ class SinkConfig(BaseModel):
     provider: Optional[str] = Field(default=None)
     host: str
     port: str
-    http_port: str
+    http_port: Optional[str] = Field(default=None)
     database: str
     username: str
     password: str
