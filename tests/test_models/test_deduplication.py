@@ -42,3 +42,17 @@ class TestDeduplicationConfig:
         assert config.id_field is None
         assert config.id_field_type is None
         assert config.time_window is None
+
+    def test_deduplication_config_enabled_false_with_fields(self):
+        """Test DeduplicationConfig when enabled is False."""
+        # All fields should be optional when enabled is False
+        config = models.DeduplicationConfig(
+            enabled=False,
+            id_field='',
+            id_field_type='',
+            time_window=None,
+        )
+        assert config.enabled is False
+        assert config.id_field is None
+        assert config.id_field_type is None
+        assert config.time_window is None

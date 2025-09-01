@@ -1,4 +1,4 @@
-from typing import Any, List, Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, Field, ValidationInfo, field_validator, model_validator
 
@@ -39,32 +39,44 @@ class DeduplicationConfig(BaseModel):
     id_field_type: Optional[KafkaDataType] = Field(default=None)
     time_window: Optional[str] = Field(default=None)
 
-    @field_validator("id_field", "id_field_type", "time_window")
+    @model_validator(mode='before')
     @classmethod
-    def validate_required_fields(cls, v: Any, info: ValidationInfo) -> Any:
-        if info.data.get("enabled", False):
-            if v is None:
-                raise ValueError(
-                    f"{info.field_name} is required when deduplication is enabled"
-                )
-        return v
+    def validate_deduplication_fields(cls, values):
+        """Validate deduplication fields based on enabled status."""
+        if isinstance(values, dict):
+            enabled = values.get("enabled", False)
 
-    @field_validator("id_field_type")
-    @classmethod
-    def validate_id_field_type(
-        cls, v: KafkaDataType, info: ValidationInfo
-    ) -> KafkaDataType:
-        if info.data.get("enabled", False):
-            if v not in [
-                KafkaDataType.STRING,
-                KafkaDataType.INT32,
-                KafkaDataType.INT64,
-            ]:
-                raise ValueError(
-                    f"{info.field_name} must be a string, int32, or int64 when "
-                    "deduplication is enabled"
-                )
-        return v
+            # If deduplication is disabled, allow empty strings
+            if not enabled:
+                # Convert empty strings to None for enum fields
+                if values.get("id_field_type") == "":
+                    values["id_field_type"] = None
+                if values.get("id_field") == "":
+                    values["id_field"] = None
+                if values.get("time_window") == "":
+                    values["time_window"] = None
+            else:
+                # If enabled, ensure required fields are present and not empty
+                for field_name in ["id_field", "id_field_type", "time_window"]:
+                    field_value = values.get(field_name)
+                    if field_value is None or field_value == "":
+                        raise ValueError(
+                            f"{field_name} is required when deduplication is enabled"
+                        )
+
+                # Validate id_field_type is a valid type when enabled
+                id_field_type = values.get("id_field_type")
+                if id_field_type not in [
+                    KafkaDataType.STRING,
+                    KafkaDataType.INT32,
+                    KafkaDataType.INT64,
+                ]:
+                    raise ValueError(
+                        "id_field_type must be a string, int32, or int64 when "
+                        "deduplication is enabled"
+                    )
+
+        return values
 
 
 class ConsumerGroupOffset(CaseInsensitiveStrEnum):
@@ -88,6 +100,10 @@ class TopicConfig(BaseModel):
         schema and has matching type.
         """
         if v is None or not v.enabled:
+            return v
+
+        # Skip validation if id_field is empty when deduplication is disabled
+        if not v.id_field or v.id_field == "":
             return v
 
         # Get the schema from the parent model's data
